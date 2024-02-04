@@ -1,0 +1,9 @@
+python-dotenv
+PyPDF2
+streamlit
+streamlit-option-menu
+streamlit-extras
+google-generativeai
+pdfminer
+pdfminer.six
+docx2txt
