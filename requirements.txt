@@ -7,3 +7,4 @@ google-generativeai
 pdfminer
 pdfminer.six
 docx2txt
+gtts
