@@ -59,7 +59,7 @@ st.set_page_config(page_title=PAGE_TITLE,
 
 # Remove whitespace from the top of the page and sidebar
 
-
+#TODO: Move this Utils.py
 st.markdown("""
 <style>
     #MainMenu, header, footer {visibility: hidden;}
@@ -72,6 +72,7 @@ st.markdown("""
 </style>
 """,unsafe_allow_html=True)
 
+#TODO: Move this Utils.py
 st.markdown("""
     <style>
     
@@ -194,16 +195,11 @@ with st.container():
                     ut.setJobDescriptionText(jd_main_content)
                     ut.verifyResumeandJDSize()
                     #resume_job_expander #check if expander lable can be changed
-                    st.session_state.resume_text = "SUCCESS"
-                    st.session_state.job_description_text = "SUCCESS"
+                    st.session_state.resume_text = resume_text
+                    st.session_state.job_description_text = jd_main_content
                     #st.write(f"After uploading file: {st.session_state}")
                     expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Desctiption  "
                     is_expanded = False
-                    #resume_job_expander.expanded = False
-                    #resume_job_expander_container.empty()
-                    #resume_job_expander_container = st.empty()
-                    #with resume_job_expander_container:
-                    #    resume_job_expander = st.expander( expander_string, expanded=is_expanded)    
                     resume_jd_message_container.success("File uploaded sucessfully")
 
             elif resume_main_file is None and (jd_main_content is None or len(jd_main_content) <= 0):
@@ -220,375 +216,205 @@ with st.container():
 
 ## ----  Review and Compare skill implementation start -----------------------------------------------------------
 if selected == 'Skills & JD review':
-    with st.container():
-        st.write("   :blue[ **Review and Compare skill in Resume with Job Description** ]  ")  
-        multi = ''' 
-        :blue[ **To Review and Compare skill:** ] <small>Upload your resume in .pdf or .docx file format. Provide Job Description.</small>
-        '''
-        st.markdown(multi, unsafe_allow_html=True)
-        
-        review_resume_button = st.button(label="Review resume for Jpb Description.")
+    resume_review_container = st.container()
+    with resume_review_container:
+        if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+            st.markdown(f" <small>Match your skills to the job: Analyze your resume and the job description for skill alignment. Skill gap analysis: Identify how your skills stack up against the job requirements.</small>"
+                        , unsafe_allow_html=True)  
 
-        #Create a form using st.form 
-        resume_jd_review_form = st.form ("Resume JD review Form")
-        with resume_jd_review_form:
-            sjr_colbutton1, sjr_colbutton2 =  st.columns([1, 1])
-            with sjr_colbutton1:
-                rjr_resume = st.file_uploader("Upload resume (.pdf or .docx) :red[*] ", type=['pdf','doc','docx'])
-                rjr_colbutton1, rjr_colbutton2 =  st.columns([8, 2])
-                with rjr_colbutton1:
-                    st.write("\n")
-                    rjr_error_message = st.info("")
-                with rjr_colbutton2:
-                    st.write("")
-                    rjr_submitted = st.form_submit_button(label="Review skills")
-                    #st.button(label="My button", style="background-color: #DD3300; color:#eeffee; border-radius: 0.75rem;")
-
-            with sjr_colbutton2:
-                rjr_jd = st.text_area(
-                    label = "Job Description :red[*] ",
-                    height = 200,
-                    max_chars = 6000 ,
-                    placeholder = "Job Description"
-                    )
-        rjr_message_container = st.container(border=True)
-        with rjr_message_container:
-            rjr_loading_indicator_container = st.container()
-            rjr_message_response = st.success("")
+            resume_review_col1, resume_review_col2, resume_review_col3 = st.columns([1,1,1])
+            with resume_review_col2:
+                m = st.markdown("""
+                <style>
+                div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                </style>""", unsafe_allow_html=True)
+                review_resume_button = st.button(label="Review resume for Job Description.")
             
-        
+            #st.button(label="My button", style="background-color: #DD3300; color:#eeffee; border-radius: 0.75rem;")
+            rjr_message_container = st.container()
+            with rjr_message_container:
+                rjr_loading_indicator_container = st.container()
+                #rjr_error_message = st.success("")
+                rjr_message_response = st.success("")
 
-        if rjr_submitted:
-            print(f"rjr_resume {rjr_resume} rjr_jd {rjr_jd} len(jr_jd) {len(rjr_jd)} ")
-            if(rjr_resume is not None and rjr_jd and len(rjr_jd)> 50):
-                #st.write("Valid input")
-                #rjr_error_message.success("Review of skill aginst Job Role is in progress, please wait...")
-                resume_text = readPdforDocFile(rjr_resume)
-                if resume_text == "MORE_THAN_FIVE_PAGES":
-                    rjr_error_message.error("PDF file contains more than 5 pages, please upload file with 5 or less pages.")
-                elif resume_text == "LESS_TEXT_IN_PDF":
-                    rjr_error_message.error("File has not enough content (less than 200 charater) to generate cover letter, please reupload file with enough content.")
-                elif resume_text == "LESS_TEXT_IN_TXT":
-                    rjr_error_message.error("File has not enough content to generate cover letter, please reupload file with enough content.")
-                elif resume_text == "MORE_TEXT_IN_TXT":
-                    rjr_error_message.error("File is too large, please reduce text size and re-upload file.")
-                elif resume_text == "ERROR_READING_FILE":
-                    rjr_error_message.error("System is not able to read provided file, please provided valid .pdf file .")
-                elif resume_text == "UNSUPPORTED_FILE_TYPE":
-                    rjr_error_message.error("Unsupported file type, accepted file types are .pdf, .text, .doc or .docx ")    
-                else:
-                    #print(f"resume_text {resume_text} \n  rjr_jd {rjr_jd}.")
-                    #st.write("Conditions are satisfied, calling OpenAI")
-                    rjr_response = ""
-                    rjr_error_message.success("Reviewing Job Description and Resume, please wait...")
-                    with rjr_loading_indicator_container:
-                        rjr_loading_indicator = st.spinner("Processing...")
-                        #rjr_error_message = st.spinner("Reviewing Job Description and Resume, please wait...")
-                        with rjr_loading_indicator:
-                            rjr_response = getSkillAndRequirementReview(resume_text, rjr_jd)
+            if review_resume_button:
+                with rjr_loading_indicator_container:
+                    rjr_loading_indicator = st.spinner("Processing...")
+                    #rjr_error_message = st.spinner("Reviewing Job Description and Resume, please wait...")
+                    with rjr_loading_indicator:
+                        rjr_response = getSkillAndRequirementReview(st.session_state.resume_text, st.session_state.job_description_text)
                     #print(cover_letter_text)
-                    rjr_error_message.success("Here are insights of Resume against Job Description :point_down: ")
+                    #rjr_error_message.success("Here are insights of Resume against Job Description :point_down: ")
                     rjr_message_response.success(rjr_response)
-
-            elif rjr_resume is None:
-                rjr_error_message.error(" :red[ Please Upload Resume.] ")
-            elif rjr_resume is not None and rjr_jd is not None and len(rjr_jd) < 50:
-                rjr_error_message.error(" :red[Job Description is required more than 50 charaters long.] ")            
-            elif rjr_resume is None and (rjr_jd is not None or len(rjr_jd) <= 0):
-                rjr_error_message.error(" :red[Upload Resume and provide job descriptions to review.]")
+        else:
+            st.toast("Upload Resume and provide Job Description")
+        #st.write(st.session_state)
 
 ## ----  Interview Questions and sample answers implementation start -----------------------------------------------------------
 if selected == 'Interview Questions & Ans':
-    with st.container():
-        st.write("   :blue[ **AI predicted interview questions and asnswers with help of Resume with Job Description** ]  ")  
-        multi = ''' 
-        :blue[ **To interview questions and answers:** ] <small>Upload your resume in .pdf or .docx file format. Provide detailed Job Description.</small>
-        '''
-        st.markdown(multi, unsafe_allow_html=True)
+    interview_que_ans_container = st.container()
+    with interview_que_ans_container:
+        if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+            #print(f"len(st.session_state.resume_text) {len(st.session_state.resume_text)} len(st.session_state.job_description_text)= {len(st.session_state.job_description_text)} ")
+            st.markdown(f" <small>Unlock your interview superpowers! This tool analyzes your resume and the job description to predict the questions you'll likely be asked and suggest winning answers that showcase your skills and experience.</small>"
+                        , unsafe_allow_html=True)  
+
+            interview_que_ans_col1, interview_que_ans_col2, interview_que_ans_col3 = st.columns([1,1,1])
+            with interview_que_ans_col2:
+                m = st.markdown("""
+                <style>
+                div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                </style>""", unsafe_allow_html=True)
+                interview_que_ans_button = st.button(label="Generate interview questions and ideal asnswers.")
         
-        #Create a form using st.form 
-        questions_answer_form = st.form ("Questions answer Form")
-        with questions_answer_form:
-            qa_col1, qa_col2 =  st.columns([1, 1])
-            with qa_col1:
-                qa_resume = st.file_uploader("Upload resume (.pdf or .docx) :red[*] ", type=['pdf','doc','docx'])
-                qa_colbutton1, qa_colbutton2 =  st.columns([8, 2])
-                with qa_colbutton1:
-                    st.write("\n")
-                    qa_error_message = st.info("")
-                with qa_colbutton2:
-                    st.write("")
-                    qa_submitted = st.form_submit_button(label=" Generate Q&A")
-            with qa_col2:
-                qa_jd = st.text_area(
-                    label = "Job Description :red[*] ",
-                    height = 200,
-                    max_chars = 6000 ,
-                    placeholder = "Job Description"
-                    )
-        qa_message_container = st.container(border=True)
-        with qa_message_container:
-            qa_loading_indicator_container = st.container()
-            qa_message_response = st.success("")
+            qa_message_container = st.container()
+            with qa_message_container:
+                qa_loading_indicator_container = st.container()
+                qa_message_response = st.success("")
 
-        if qa_submitted:
-            print(f"rjr_resume {qa_resume} rjr_jd {qa_jd} len(jr_jd) {len(qa_jd)} ")
-            if(qa_resume is not None and qa_jd and len(qa_jd)> 50):
-                #st.write("Valid input")
-                #rjr_error_message.success("Review of skill aginst Job Role is in progress, please wait...")
-                resume_text = readPdforDocFile(qa_resume)
-                if resume_text == "MORE_THAN_FIVE_PAGES":
-                    qa_error_message.error("PDF file contains more than 5 pages, please upload file with 5 or less pages.")
-                elif resume_text == "LESS_TEXT_IN_PDF":
-                    qa_error_message.error("File has not enough content (less than 200 charater) to generate cover letter, please reupload file with enough content.")
-                elif resume_text == "LESS_TEXT_IN_TXT":
-                    qa_error_message.error("File has not enough content to generate cover letter, please reupload file with enough content.")
-                elif resume_text == "MORE_TEXT_IN_TXT":
-                    qa_error_message.error("File is too large, please reduce text size and re-upload file.")
-                elif resume_text == "ERROR_READING_FILE":
-                    qa_error_message.error("System is not able to read provided file, please provided valid .pdf file .")
-                elif resume_text == "UNSUPPORTED_FILE_TYPE":
-                    qa_error_message.error("Unsupported file type, accepted file types are .pdf, .text, .doc or .docx ")    
-                else:
-                    #print(f"resume_text {resume_text} \n  rjr_jd {rjr_jd}.")
-                    #st.write("Conditions are satisfied, calling OpenAI")
-                    qa_error_message.success("Generating Questions and Answers, please wait...")
-                    with qa_loading_indicator_container:
-                        qa_loading_indicator = st.spinner("Processing...")
-                        #rjr_error_message = st.spinner("Reviewing Job Description and Resume, please wait...")
-                        with qa_loading_indicator:
-                            qa_response = generateQuestionAnswers(resume_text, qa_jd)
-                    #print(cover_letter_text)
-                    qa_error_message.success("Here are preicted Questions and Answers generated with help of Resume and Job Description :point_down: ")
+            if interview_que_ans_button:
+                with qa_loading_indicator_container:
+                    interview_que_ans_loading = st.spinner("Processing...")
+                    with interview_que_ans_loading:
+                        qa_response = generateQuestionAnswers(st.session_state.resume_text, st.session_state.job_description_text)
                     qa_message_response.success(qa_response)
-
-            elif qa_resume is None:
-                qa_error_message.error(" :red[ Please Upload Resume.] ")
-            elif qa_resume is not None and qa_jd is not None and len(qa_jd) < 50:
-                qa_error_message.error(" :red[Job Description is required more than 50 charaters long.] ")            
-            elif qa_resume is None and (qa_jd is not None or len(qa_jd) <= 0):
-                qa_error_message.error(" :red[Upload Resume and provide job descriptions to review.]")
-
-
 
 ## ----  Cover letter implementation start -----------------------------------------------------------
 if selected == 'Cover Letter' :
-#====Second project of Blog generation        
-    with st.container():
-        st.write("")
-        #st.divider()
-        
-        st.write("   :blue[ **Generate cover letter for Job application** ]  ")  
-        multi = ''' 
-        :blue[ **To generate a cover letter:** ] <small>Upload your resume in .pdf or .docx file format or your skills. Provide Role, Industry, Job Description and how approximate number of word of cover letter.</small>
-        '''
-        st.markdown(multi, unsafe_allow_html=True)
-        
-        #Create a form using st.form 
-        cover_letter_form = st.form ("Cover Letter Form")
-        
-        with cover_letter_form:
-            col1, col2, col3  =  st.columns([4, 2, 2])
-            with col1:
-                #uploaded_file = form.file_uploader("upload .txt or .pdf file")
-                uploaded_resume = st.file_uploader("Upload resume (.pdf or .docx) :red[*] ", type=['pdf','doc','docx'])
-            with col2:
-                letter_length = st.number_input("Cover letter length(words) :red[*] ", 300 , 600)                
+    cover_letter_container = st.container()
+    with cover_letter_container:
+        if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+            
+            cover_letter_col1, cover_letter_col2, cover_letter_col3 = st.columns([1,1,1])
+            with cover_letter_col1:
+                st.markdown("""
+                            <small>This tool utilizes both the job description and resume to generate a tailored cover letter for your job application. To ensure greater precision, kindly include the job title and company name. Incorporating these details enhances the effectiveness of the generated letter. </small>
+                               """, unsafe_allow_html=True)  
+            with cover_letter_col2:
                 job_title = st.text_input(" Job Title :red[*] ", max_chars =50, placeholder="Technical Project Manager")
-            with col3:
-                experience_years = st.number_input("Year of experience", 1 , 50)
-                industry = st.text_input(" Industry", max_chars=70, placeholder="Marketing")            
-            
-            colbutton1, colbutton2 =  st.columns([1, 1])
-            with colbutton1:
-                skills = st.text_area(
-                    label = "If file is not uploaded add your skills here",
-                    height = 200,
-                    max_chars = 4000 ,
-                    placeholder = "Project Management, Scrum Master"
-                    )
-            with colbutton2:
-                jd = st.text_area(
-                    label = "Job Description :red[*] ",
-                    height = 200,
-                    max_chars = 6000 ,
-                    placeholder = "Job Description"
-                    )
-            
-            first_col, second_col, last_col = st.columns([4,1,5])
-            with first_col:
-                cl_message_container = st.container(border=False)
-                with cl_message_container:
-                    #cover_letter_message = st.markdown("", unsafe_allow_html=True)
-                    cover_letter_message = st.error("")
-            with second_col:
-                cover_letter_submitted = st.form_submit_button(label="Generate")
-            with last_col:
-                company = st.text_input(" Applying for (Company)", max_chars=70, placeholder="Google")            
+            with cover_letter_col3:
+                company = st.text_input(" Applying for (Company) :red[*]", max_chars=70, placeholder="Google")
 
-        cover_letter_message_container = st.container(border=True)
-        with cover_letter_message_container:
-            cover_letter_loading_indicator_container = st.container()
-            cover_letter_message_response = st.success("")
+            cover_letter_btn_col1, cover_letter_btn_col2, cover_letter_btn_col3 = st.columns([1,1,1])
+            with cover_letter_btn_col2:
+                m = st.markdown("""
+                    <style>
+                    div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                    </style>""", unsafe_allow_html=True)
+                cover_letter_button = st.button(label="Generate Cover Letter")
+            
+            cover_letter_message_container = st.container()
+            with cover_letter_message_container:
+                cover_letter_loading_indicator_container = st.container()
+                cover_letter_message_response = st.success("")
 
-        #Validation of all the fields
-        if cover_letter_submitted:
-            #st.write("Button clicked")
-            #print(f" uploaded_resume is not None {uploaded_resume is not None}  skills is not None {skills is not None} ")
-            if (uploaded_resume is not None or (skills is not None and len(skills)>0 )) and job_title and len(job_title)>0 and industry and len(industry)>0 and jd and len(jd)> 0:
-                #print("We have a file or skills")
-                if len(skills) >= 5:
-                    #print("Skills more than 5 char found")
-                    skill_text = skills
-                    resume_text = ""
-                    uploaded_file_error = ""
-                    cover_letter_message.success("Generating cover letter, please wait...")
-                    cover_letter_text = generateCoverLetter(resume_text, skills, job_title, industry, jd, company, letter_length, experience_years)
-                    cover_letter_message.success("Here is cover letter :point_down: ")
-                    cover_letter_message_response.success(cover_letter_text)
-                    #print(cover_letter_text)
-                elif uploaded_resume is None and skills is not None and len(skills) < 5:
-                    #cover_letter_message.markdown("<h8 style='text-align: left; color: red'> Skills are too short to generate cover letter, add more content or upload Resume. </h8>" , unsafe_allow_html=True)
-                    cover_letter_message.error("Skills are too short to generate cover letter, add more content or upload Resume..")
-                elif uploaded_resume is not None and ( skills is None or len(skills) < 5):
-                    #print("File found")
-                    skills = ""
-                    #resume_text = read_resume_file(uploaded_resume)
-                    resume_text = readPdforDocFile(uploaded_resume)
-                    if resume_text == "MORE_THAN_FIVE_PAGES":
-                        cover_letter_message.error("PDF file contains more than 5 pages, please upload file with 5 or less pages.")
-                    elif resume_text == "LESS_TEXT_IN_PDF":
-                        cover_letter_message.error("File has not enough content (less than 200 charater) to generate cover letter, please reupload file with enough content.")
-                    elif resume_text == "LESS_TEXT_IN_TXT":
-                        cover_letter_message.error("File has not enough content to generate cover letter, please reupload file with enough content.")
-                    elif resume_text == "MORE_TEXT_IN_TXT":
-                        cover_letter_message.error("File is too large, please reduce text size and re-upload file.")
-                    elif resume_text == "ERROR_READING_FILE":
-                        cover_letter_message.error("System is not able to read provided file, please provided valid .pdf file .")
-                    elif resume_text == "UNSUPPORTED_FILE_TYPE":
-                        cover_letter_message.error("Unsupported file type, accepted file types are .pdf, .text, .doc or .docx ")    
-                    else:
-                        #print(f"resume_text {resume_text} \n skills {skills}, \n job_title  {job_title}, \n industry {industry}, \n jd {jd}, \n company {company} , \n letter_length = {letter_length}, \n experience_years = {experience_years} ")
-                        #st.write("Conditions are satisfied, calling OpenAI")
-                        cover_letter_message.success("Generating cover letter, please wait...")
-                        with cover_letter_loading_indicator_container:
-                            cover_letter_loading_indicator = st.spinner("Processing...")
-                            #rjr_error_message = st.spinner("Reviewing Job Description and Resume, please wait...")
-                            with cover_letter_loading_indicator:
-                                cover_letter_text = generateCoverLetter(resume_text, skills, job_title, industry, jd, company, letter_length, experience_years)
-                        #print(cover_letter_text)
-                        cover_letter_message.success("Here is cover letter :point_down: ")
-                        cover_letter_message_response.success(cover_letter_text)
-                    #cover_letter_message.markdown("<h8 style='text-align: left; color: red'>{uploaded_file_error}</h8>" , unsafe_allow_html=True)
+            if cover_letter_button:
+                print(f"job_title: {job_title is None}  len(job_title)= {len(job_title)} company: {company is not None}  len(company) {len(company)}")
+                if len(job_title) >1 and len(company) >1:
+                    print("Condition satisfied")
+                    with cover_letter_loading_indicator_container:
+                        cover_letter_loading_indicator = st.spinner("Generating cover letter, please wait...")
+                        with cover_letter_loading_indicator:
+                            cover_letter_text = generateCoverLetter(st.session_state.resume_text, job_title, st.session_state.job_description_text, company)
+                        cover_letter_message_response.success(cover_letter_text)                
+                elif len(job_title) >1 and len(company) <=0:
+                    cover_letter_message_response.error("Company name is missing.")
+                elif len(job_title) <=0 and len(company) >1:
+                    cover_letter_message_response.error("Please provide Job description.")
+                elif len(job_title) <=0 and len(company) <=0:
+                    cover_letter_message_response.error("Please provide Job description.")
                 else:
-                    cover_letter_message.markdown("<h8 style='text-align: left; color: red'> Skills are too short to generate cover letter, add more content or upload Resume. </h8>" , unsafe_allow_html=True)
-                    
-            else:
-                #print("In validation error area")
-                if job_title is None or len(job_title)<=0: 
-                    cover_letter_message.error(" Please provide Job Title ")
-                elif industry is None or len(industry)<=0:
-                    cover_letter_message.error(" Please provide Industry value ")
-                elif jd is None or len(jd)<=0:
-                    cover_letter_message.error(" Please provide Job Description  ")
-                elif uploaded_resume is None and skills is not None and len(skills) <= 0:
-                    cover_letter_message.error(" Upload Resume or add your skills. ")
+                    cover_letter_message_response.error("Unknown error.")
 
-            
-## ----  Cover letter implementation end ----------------------------
-
-## ----  Chat coversation start----------------------------
+## ----  Chat coversation start-------------------------------------------------------------------------
 if selected == 'Chat Coversation':
-
+    #TODO: introduce get started button
+    if "skill_review_button_clicked" not in st.session_state:
+        st.session_state.skill_review_button_clicked = False
+            
     # Initialize session state for chat history if it doesn't exist 
     with st.container():
-        st.write("   :blue[ ** Interview like Conversation with AI  ** ]  ")  
-        multi = ''' 
-        :blue[ **To Review and Compare skill:** ] <small>Upload your resume in .pdf or .docx file format. AI will ask you questions against job desctiption.</small>
-        '''
-        st.markdown(multi, unsafe_allow_html=True)
 
-        # load_dotenv()
-        # gemini_key = os.getenv("GOOGLE_API_KEY")
-        # genai.configure(api_key=gemini_key)
-        #model = genai.GenerativeModel("gemini-pro")
+        st.write("   :blue[ **Interview like Conversation with AI** ]  ")  
 
-        model = getGeminProModel()
-        
-        #THese attributed need to be read from uploaded resume and Job Description
-        resume_text = ut.resume_text
-        jd_text = ut.jd_text
+        chat_conversation_button_container = st.container()
+        if st.session_state.skill_review_button_clicked == False:
+            with chat_conversation_button_container:
+                chat_conversation_button = st.button(label="Let's get conversation started.")
+        else:
+            chat_conversation_button_container = st.empty()
+            chat_conversation_button_container.empty()
 
-        first_prompt_template = f"""Role: Chat Practice Partner for interview
-        Topic: Job interview
-        Style: Casual, respectful, not too enthusiastic or flowery.
+        if(st.session_state.skill_review_button_clicked or chat_conversation_button) and len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
 
-        Steps:
-        From the provided Resume and Job Description, initiate with a topic-specific interview question. 
+            st.session_state.skill_review_button_clicked = True
 
-        Ask one question at a time.
+            model = getGeminProModel()
 
-        Analyze job description and gather company information and influence questions with that information.
+            first_prompt_template = f"""Role: Chat Practice Partner for interview
+            Topic: Job interview
+            Style: Casual, respectful, not too enthusiastic or flowery.
 
-        Very first time user will just say "Lets get started" then provide a first questions. There will not be answer provided.
+            Steps:
+            From the provided Resume and Job Description, initiate with a topic-specific interview question. 
+            Ask one question at a time.
+            Analyze job description and gather company information and influence questions with that information.
+            Very first time user will just say "Lets get started" then provide a first questions. There will not be answer provided.
+            If there is "Answer" available in users response, review the answer, and provide next one question.
+                
+            Example:
+            Question: "Can you share details on your last project ?”
 
-        If there is "Answer" available in users response, review the answer, and provide next one question.
-            
-        Example:
-        Question: "Can you share details on your last project ?”
+            Here is Resume: \" {st.session_state.resume_text}. \" 
 
-        Here is Resume: \" {resume_text}. \" 
+            Here is Job Description \"{st.session_state.job_description_text}. \" 
+            """
 
-        Here is Job Description \"{jd_text}. \" 
+            # Add a Gemini Chat history object to Streamlit session state
+            if "chat" not in st.session_state:
+                st.session_state.chat = model.start_chat(history = [])
+                #st.session_state.chat = model.start_chat(prompt_template)
 
-        """
+            if "very_first_request" not in st.session_state:
+                st.session_state.very_first_request = True
 
-        # Add a Gemini Chat history object to Streamlit session state
-        if "chat" not in st.session_state:
-            st.session_state.chat = model.start_chat(history = [])
-            #st.session_state.chat = model.start_chat(prompt_template)
+            first_container = st.container(height=380, border=False)
+            second_container = st.container()
+            with first_container:
+                for message in st.session_state.chat.history:
+                    x = message.parts[0].text.find("Role: Chat Practice Partner for interview")
+                    if x < 0:
+                        with st.chat_message(ut.role_to_streamlit(message.role)):
+                            st.markdown(message.parts[0].text)
 
-        if "very_first_request" not in st.session_state:
-            st.session_state.very_first_request = True
+                if st.session_state.very_first_request == True:
+                    response = st.session_state.chat.send_message(first_prompt_template) 
+                    #print(f"Sending first request: {first_prompt_template}")
+                    if response and len(response.text) >=0:
+                        st.session_state.very_first_request = False
+                        # Display last 
+                    with st.chat_message("assistant"):
+                            st.markdown(response.text)
 
-        first_container = st.container(height=400, border=False)
-        second_container = st.container()
-        with first_container:
-            for message in st.session_state.chat.history:
-                x = message.parts[0].text.find("Role: Chat Practice Partner for interview")
-                if x < 0:
-                    with st.chat_message(ut.role_to_streamlit(message.role)):
-                        st.markdown(message.parts[0].text)
-
-            if st.session_state.very_first_request == True:
-                response = st.session_state.chat.send_message(first_prompt_template) 
-                #print(f"Sending first request: {first_prompt_template}")
-                if response and len(response.text) >=0:
-                    st.session_state.very_first_request = False
+                # Accept user's next message, add to context, resubmit context to Gemini
+                with second_container:
+                    prompt = st.chat_input("Answer")
+                
+                if prompt: 
+                    # Display user's last message
+                    st.chat_message("user").markdown(prompt)
+                    
+                    # Send user entry to Gemini and read the response
+                    #print(st.session_state.very_first_request)
+                    prompt = "Answer:" + prompt
+                    response = st.session_state.chat.send_message(prompt)
+                    #print(f"Sending second request: {prompt} ")
+                    
+                    if response and len(response.text) >=0:
+                        st.session_state.very_first_request = False
                     # Display last 
-                with st.chat_message("assistant"):
+                    with st.chat_message("assistant"):
                         st.markdown(response.text)
-
-            # Accept user's next message, add to context, resubmit context to Gemini
-            with second_container:
-                prompt = st.chat_input("Answer")
-            
-            if prompt: 
-                # Display user's last message
-                st.chat_message("user").markdown(prompt)
-                
-                # Send user entry to Gemini and read the response
-                #print(st.session_state.very_first_request)
-
-                prompt = "Answer:" + prompt
-                response = st.session_state.chat.send_message(prompt)
-                #print(f"Sending second request: {prompt} ")
-                
-                if response and len(response.text) >=0:
-                    st.session_state.very_first_request = False
-                # Display last 
-                with st.chat_message("assistant"):
-                    st.markdown(response.text)
 
 ## ----  Chat coversation end----------------------------
  
@@ -600,11 +426,7 @@ if selected == 'Audio Conversation':
         st.markdown(multi, unsafe_allow_html=True)
         model = ut.getGeminProModel()
         
-        #TODO: THese attributed need to be read from uploaded resume and Job Description
-        resume_text = ut.resume_text
-        jd_text = ut.jd_text    
-
-        audio_first_prompt_template = ut.getAudio_first_prompt()
+        audio_first_prompt_template = ut.getAudio_first_prompt(st.session_state.resume_text, st.session_state.job_description_text)
 
         # Add a previous bot question  to Streamlit session state
         if "previous_question" not in st.session_state:
@@ -725,9 +547,6 @@ if selected == 'Audio Conversation':
                     #else:
                     #    print("No response for the first request")     
 
-
-
-                
     
 ##- Celebration with dropping ballon or any other emoji
 #celebration_animate()
