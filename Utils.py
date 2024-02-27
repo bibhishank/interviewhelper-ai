@@ -159,7 +159,29 @@ def readPdforDocFile(file):
      return "UNSUPPORTED_FILE_TYPE"
 
 #Output should be in bulleted formats
+#-----------------------------------------------------------------------------------------------------------
+  #This fuction returns first prompt for Chat conversation
+def getChat_first_prompt(in_resume_text, in_job_description_text):
+  first_chat_prompt_template = f"""Role: Chat Practice Partner for interview
+      Topic: Job interview
+      Style: Casual, respectful, not too enthusiastic or flowery.
 
+      Steps:
+      From the provided Resume and Job Description, initiate with a topic-specific interview question. 
+      Ask one question at a time.
+      Analyze job description and gather company information and influence questions with that information.
+      Very first time user will just say "Lets get started" then provide a first questions. There will not be answer provided.
+      If there is "Answer" available in users response, review the answer, and provide next one question.
+          
+      Example:
+      Question: "Can you share details on your last project ?”
+
+      Here is Resume: \" {in_resume_text}. \" 
+
+      Here is Job Description \"{in_job_description_text}. \" 
+      """
+  return first_chat_prompt_template
+   
 #-----------------------------------------------------------------------------------------------------------
 # This function create prompt template to get the interview question in text format to be converted in Audio
 def getAudio_first_prompt(in_resume_text, in_job_description_text):
