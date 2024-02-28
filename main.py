@@ -47,17 +47,21 @@ all_page_text = ""
 current_dir = Path(__file__).parent if "__file__" in locals() else Path.cwd()
 company_logo = current_dir / "assets" / "company_logo.png"
 web_icon =  current_dir / "assets" / "company_icon.ico"
-foot_css_file = current_dir / "static" / "footer_style.css" 
+foot_css_file = current_dir / "static" / "footer_style.css"
+
+pg_icon_png = current_dir / "assets" / "icon.png"
 
 logo_image = Image.open(company_logo)
 icon_image = Image.open(web_icon)
+pg_icon = Image.open(pg_icon_png)
 
-PAGE_TITLE = "Interview Helper AI"
-PAGE_ICON = icon_image
+PAGE_TITLE = "Interview Helper AI (BETA)"
+#PAGE_ICON = icon_image
+PAGE_ICON = pg_icon
 #":large_green_circle:"    # :wave:"    #:technologist"
 
-st.set_page_config(page_title=PAGE_TITLE, 
-                   page_icon=PAGE_ICON, 
+st.set_page_config(page_title = PAGE_TITLE, 
+                   page_icon =  icon_image, 
                    layout= "wide",
                    menu_items=None)
 
@@ -88,7 +92,6 @@ def inject_ga():
         html = str(soup)
         new_html = html.replace('<head>', '<head>\n' + GA_JS)
         index_path.write_text(new_html)
-
 
 inject_ga()
 
