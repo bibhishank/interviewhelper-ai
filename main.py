@@ -55,7 +55,7 @@ logo_image = Image.open(company_logo)
 icon_image = Image.open(web_icon)
 pg_icon = Image.open(pg_icon_png)
 
-PAGE_TITLE = "Interview Helper AI (BETA)"
+PAGE_TITLE = "Interview Helper AI"
 #PAGE_ICON = icon_image
 PAGE_ICON = pg_icon
 #":large_green_circle:"    # :wave:"    #:technologist"
@@ -149,12 +149,12 @@ with st.container():
     with col1:
         st.image(logo_image, width=125)
     with col2:
-        st.header("Interview Helper AI")
+        st.header("Interview Helper AI (Beta)")
 
 with st.container():
     selected = option_menu(
         menu_title = None,
-        options = ['Skills & JD review', 'Interview Questions & Ans' , 'Chat Coversation', 'Audio Conversation', 'Cover Letter'],
+        options = ['Skills & JD review', 'Interview Q & A' , 'Chat Coversation', 'Audio Conversation', 'Cover Letter'],
         #add these names from https://icons.getbootstrap.com    
         icons = ['journal-check','list-columns-reverse', 'chat-left-text-fill', 'mic', 'envelope-paper'], 
         orientation = 'horizontal',
@@ -215,7 +215,7 @@ with st.container():
                 jd_main_content = st.text_area(
                     label = "Job Description :red[*] ",
                     height = 75,
-                    max_chars = 6000 ,
+                    max_chars = 7000 ,
                     placeholder = "Job Description", key="job_desc_key"
                     )
             resume_jd_upload_button_col, resume_jd_upload_message_col  =  st.columns([1, 9])
@@ -268,11 +268,28 @@ with st.container():
 if selected == 'Skills & JD review':
     
     #if st.session_state.skillJDReview_loaded == False:
-    resume_review_container = st.container()
-    with resume_review_container:
-        if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+    if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+        resume_review_container = st.container(border=True)
+        with resume_review_container:
             st.markdown(f" <small>Match your skills to the job: Analyze your resume and the job description for skill alignment. Skill gap analysis: Identify how your skills stack up against the job requirements.</small>"
                         , unsafe_allow_html=True)  
+
+            st.markdown( """ <style>
+                        #rcorners2 {
+            border-radius: 25px;
+            border: 2px solid #73AD21;
+            padding: 20px; 
+            }
+            </style>
+                        """,  unsafe_allow_html=True)
+
+            resume_review_info_col1, resume_review_info_col2, resume_review_info_col3 = st.columns([1,1,1])
+            with resume_review_info_col1:
+                st.markdown(f"<p id='rcorners2'>🦾 Analyze your resume and the job description for skill alignment. </p>", unsafe_allow_html=True)
+            with resume_review_info_col2:
+                st.markdown(f"<p id='rcorners2'>🦾 Identify how your skills stack up against the job requirements. </p>", unsafe_allow_html=True)
+            with resume_review_info_col3:
+                st.markdown(f"<p id='rcorners2'>🦾 Use the insights from skill alignment and gap analysis to customize your resume </p>", unsafe_allow_html=True)
 
             resume_review_col1, resume_review_col2, resume_review_col3 = st.columns([1,1,1])
             with resume_review_col2:
@@ -280,7 +297,7 @@ if selected == 'Skills & JD review':
                 <style>
                 div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
                 </style>""", unsafe_allow_html=True)
-                review_resume_button = st.button(label="Review resume for Job Description.")
+                review_resume_button = st.button(label="Review skill alignments for Job Description.")
             #st.button(label="My button", style="background-color: #DD3300; color:#eeffee; border-radius: 0.75rem;")
             rjr_message_container = st.container()
             with rjr_message_container:
@@ -293,7 +310,7 @@ if selected == 'Skills & JD review':
 
             if review_resume_button:
                 with rjr_loading_indicator_container:
-                    rjr_loading_indicator = st.spinner("Processing...")
+                    rjr_loading_indicator = st.spinner("Reviewing skills alignment for the Job Description, please wait...")
                     #rjr_error_message = st.spinner("Reviewing Job Description and Resume, please wait...")
                     with rjr_loading_indicator:
                         rjr_response = getSkillAndRequirementReview(st.session_state.resume_text, st.session_state.job_description_text)
@@ -301,18 +318,35 @@ if selected == 'Skills & JD review':
                     st.session_state.skillJDReview_loaded = True
                     st.session_state.skillJDReview_value = rjr_response
                     rjr_message_response.success(rjr_response)
-        else:
-            st.toast("Upload Resume and provide Job Description")
-        #st.write(st.session_state)
+    else:
+        st.toast("Upload Resume and provide Job Description")
+    #st.write(st.session_state)
 
 ## ----  Interview Questions and sample answers implementation start -----------------------------------------------------------
-if selected == 'Interview Questions & Ans':
-    interview_que_ans_container = st.container()
-    with interview_que_ans_container:
-        if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+if selected == 'Interview Q & A':
+    if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+        interview_que_ans_container = st.container(border=True)
+        with interview_que_ans_container:
             #print(f"len(st.session_state.resume_text) {len(st.session_state.resume_text)} len(st.session_state.job_description_text)= {len(st.session_state.job_description_text)} ")
             st.markdown(f" <small>Unlock your interview superpowers! This tool analyzes your resume and the job description to predict the questions you'll likely be asked and suggest winning answers that showcase your skills and experience.</small>"
                         , unsafe_allow_html=True)  
+
+            st.markdown( """ <style>
+                        #rcorners2 {
+            border-radius: 25px;
+            border: 2px solid #73AD21;
+            padding: 20px; 
+            }
+            </style>
+                        """,  unsafe_allow_html=True)
+
+            qanda_info_col1, qanda_info_info_col2, qanda_info_info_col3 = st.columns([1,1,1])
+            with qanda_info_col1:
+                st.markdown(f"<p id='rcorners2'>🦾 Analyze your resume and job description to predict interview questions. </p>", unsafe_allow_html=True)
+            with qanda_info_info_col2:
+                st.markdown(f"<p id='rcorners2'>🦾 Tailored Answer Suggestions, Receive personalized recommendations for crafting winning answers. </p>", unsafe_allow_html=True)
+            with qanda_info_info_col3:
+                st.markdown(f"<p id='rcorners2'>🦾 Showcase Your Strengths, skills confidently to impress interviewers. </p>", unsafe_allow_html=True)
 
             interview_que_ans_col1, interview_que_ans_col2, interview_que_ans_col3 = st.columns([1,1,1])
             with interview_que_ans_col2:
@@ -331,19 +365,19 @@ if selected == 'Interview Questions & Ans':
 
             if interview_que_ans_button:
                 with qa_loading_indicator_container:
-                    interview_que_ans_loading = st.spinner("Processing...")
+                    interview_que_ans_loading = st.spinner("Generating interview questions and ideal asnswers, please wait...")
                     with interview_que_ans_loading:
                         qa_response = generateQuestionAnswers(st.session_state.resume_text, st.session_state.job_description_text)
                     #st.session_state.skill = True
                     st.session_state.questionAnswer_value = qa_response                    
+                    
                     qa_message_response.success(qa_response)
 
 ## ----  Cover letter implementation start -----------------------------------------------------------
 if selected == 'Cover Letter' :
-    cover_letter_container = st.container()
-    with cover_letter_container:
-        if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
-            
+    if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+        cover_letter_container = st.container(border=True)
+        with cover_letter_container:
             cover_letter_col1, cover_letter_col2, cover_letter_col3 = st.columns([1,1,1])
             with cover_letter_col1:
                 st.markdown("""
@@ -353,6 +387,23 @@ if selected == 'Cover Letter' :
                 job_title = st.text_input(" Job Title :red[*] ", max_chars =50, placeholder="Technical Project Manager")
             with cover_letter_col3:
                 company = st.text_input(" Applying for (Company) :red[*]", max_chars=70, placeholder="Google")
+
+            st.markdown( """ <style>
+                        #rcorners2 {
+            border-radius: 25px;
+            border: 2px solid #73AD21;
+            padding: 20px; 
+            }
+            </style>
+                        """,  unsafe_allow_html=True)
+
+            cover_letter_info_col1, cover_letter_info_col2, cover_letter_info_col3 = st.columns([1,1,1])
+            with cover_letter_info_col1:
+                st.markdown(f"<p id='rcorners2'>🦾 Utilize both the job description and resume to create a custom cover letter for job applications. </p>", unsafe_allow_html=True)
+            with cover_letter_info_col2:
+                st.markdown(f"<p id='rcorners2'>🦾  Improve the accuracy of the cover letter by providing the job title and company name for better alignment with the position. </p>", unsafe_allow_html=True)
+            with cover_letter_info_col3:
+                st.markdown(f"<p id='rcorners2'>🦾 Ensure the generated cover letter effectively reflects your qualifications and suitability for the specific role and company. </p>", unsafe_allow_html=True)
 
             cover_letter_btn_col1, cover_letter_btn_col2, cover_letter_btn_col3 = st.columns([1,1,1])
             with cover_letter_btn_col2:
@@ -371,22 +422,27 @@ if selected == 'Cover Letter' :
 
             if cover_letter_button:
                 print(f"job_title: {job_title is None}  len(job_title)= {len(job_title)} company: {company is not None}  len(company) {len(company)}")
-                if len(job_title) >1 and len(company) >1:
-                    print("Condition satisfied")
-                    with cover_letter_loading_indicator_container:
-                        cover_letter_loading_indicator = st.spinner("Generating cover letter, please wait...")
-                        with cover_letter_loading_indicator:
-                            cover_letter_text = generateCoverLetter(st.session_state.resume_text, job_title, st.session_state.job_description_text, company)
-                        st.session_state.coverLetter_value = cover_letter_text
-                        cover_letter_message_response.success(cover_letter_text)                
-                elif len(job_title) >1 and len(company) <=0:
-                    cover_letter_message_response.error("Company name is missing.")
-                elif len(job_title) <=0 and len(company) >1:
-                    cover_letter_message_response.error("Please provide Job Title.")
-                elif len(job_title) <=0 and len(company) <=0:
-                    cover_letter_message_response.error("Please provide Job Title and Company name.")
-                else:
-                    cover_letter_message_response.error("Unknown error.")
+                try:
+                    if len(job_title) >1 and len(company) >1:
+                        #print("Condition satisfied")
+                        with cover_letter_loading_indicator_container:
+                            cover_letter_loading_indicator = st.spinner("Generating cover letter, please wait...")
+                            with cover_letter_loading_indicator:
+                                cover_letter_text = generateCoverLetter(st.session_state.resume_text, job_title, st.session_state.job_description_text, company)
+                            st.session_state.coverLetter_value = cover_letter_text
+                            cover_letter_message_response.empty()
+                            #cover_letter_message_response.sucess("")
+                            cover_letter_message_response.success(cover_letter_text)                
+                    elif len(job_title) >1 and len(company) <=0:
+                        cover_letter_message_response.error("Company name is missing.")
+                    elif len(job_title) <=0 and len(company) >1:
+                        cover_letter_message_response.error("Please provide Job Title.")
+                    elif len(job_title) <=0 and len(company) <=0:
+                        cover_letter_message_response.error("Please provide Job Title and Company name.")
+                    else:
+                        cover_letter_message_response.error("Unknown error.")
+                except Exception as e:
+                    print("An error occurred:", e)
 
 ## ----  Chat coversation start-------------------------------------------------------------------------
 if selected == 'Chat Coversation':
@@ -400,12 +456,35 @@ if selected == 'Chat Coversation':
         if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
             st.markdown(f" <small>This Interview like conversation offers a realistic simulation of the interview process, helping users build confidence and refine their responses in a supportive environment. This is is an immersive experience where users engage in simulated interviews facilitated by artificial intelligence.</small>"
                         , unsafe_allow_html=True)  
-        
+            st.markdown( """ <style>
+                        #rcorners2 {
+            border-radius: 25px;
+            border: 2px solid #73AD21;
+            padding: 20px; 
+            }
+            </style>
+                        """,  unsafe_allow_html=True)
+
+            resume_review_info_col1, resume_review_info_col2, resume_review_info_col3 = st.columns([1,1,1])
+            with resume_review_info_col1:
+                st.markdown(f"<p id='rcorners2'>🦾 Engage in lifelike interview scenarios to practice and refine responses.. </p>", unsafe_allow_html=True)
+            with resume_review_info_col2:
+                st.markdown(f"<p id='rcorners2'>🦾 Gain confidence by participating in simulated interviews tailored to your needs. </p>", unsafe_allow_html=True)
+            with resume_review_info_col3:
+                st.markdown(f"<p id='rcorners2'>🦾 Experience immersive interviews guided by artificial intelligence for personalized support and feedback. </p>", unsafe_allow_html=True)
+
+
         chat_conversation_button_container = st.empty()
         if st.session_state.skill_review_button_clicked == False and len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
             with chat_conversation_button_container.container():
                 #print(f"Debug 1 {st.session_state.skill_review_button_clicked}")
-                chat_conversation_button = st.button(label="Let's get conversation started.")
+                chat_btn_col1, chat_btn_btn_col2, chat_btn_btn_col3 = st.columns([1,1,1])
+                with chat_btn_btn_col2:                
+                    m = st.markdown("""
+                        <style>
+                        div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                        </style>""", unsafe_allow_html=True)
+                    chat_conversation_button = st.button(label="Let's get conversation started.")
                 if chat_conversation_button:
                     st.session_state.skill_review_button_clicked = True
                     chat_conversation_button_container.empty()
@@ -433,39 +512,40 @@ if selected == 'Chat Coversation':
                             st.markdown(message.parts[0].text)
 
                 if st.session_state.very_first_request == True:
-                    response = st.session_state.chat.send_message(ut.getChat_first_prompt(st.session_state.resume_text, st.session_state.job_description_text)) 
+                    with st.spinner('💡 Generating question, please wait'):
+                        chat_response = st.session_state.chat.send_message(ut.getChat_first_prompt(st.session_state.resume_text, st.session_state.job_description_text)) 
                     #print(f"Sending first request: {first_prompt_template}")
-                    if response and len(response.text) >=0:
+                    if chat_response and len(chat_response.text) >=0:
                         st.session_state.very_first_request = False
                         #print(f"Debug 4 {st.session_state.skill_review_button_clicked}")
                         chat_conversation_button_container.empty()
 
                         # Display last 
                     with st.chat_message("assistant"):
-                            st.markdown(response.text)
+                            st.markdown(chat_response.text)
                     #print(f"Debug 5 {st.session_state.skill_review_button_clicked}")
                     chat_conversation_button_container.empty()
 
                 # Accept user's next message, add to context, resubmit context to Gemini
                 with second_container:
-                    prompt = st.chat_input("Answer")
+                    second_prompt = st.chat_input("Answer")
                 
-                if prompt: 
+                if second_prompt: 
                     # Display user's last message
-                    st.chat_message("user").markdown(prompt)
+                    st.chat_message("user").markdown(second_prompt)
                     
                     # Send user entry to Gemini and read the response
                     #print(st.session_state.very_first_request)
-                    prompt = "Answer:" + prompt
-                    with st.spinner('💡Thinking'):
-                        response = st.session_state.chat.send_message(prompt)
+                    second_prompt_with_ans = "Answer:" + second_prompt
+                    with st.spinner('💡 Processing'):
+                        second_response = st.session_state.chat.send_message(second_prompt_with_ans)
                     #print(f"Sending second request: {prompt} ")
                     
-                    if response and len(response.text) >=0:
+                    if second_response and len(second_response.text) >=0:
                         st.session_state.very_first_request = False
                     # Display last 
                     with st.chat_message("assistant"):
-                        st.markdown(response.text)
+                        st.markdown(second_response.text)
 
 ## ----  Chat coversation end----------------------------
 

@@ -32,7 +32,7 @@ def generateCoverLetter(resume_text, job_title, jd, company):
       
       With all these infomation,  Write a conversational, more than 500 words cover letter for a \"{job_title}\" role.
       
-      Cover Letter should not be less than 300 charaters.
+      Cover Letter should not be less than 1000 charaters.
 
     {company_prompt}
     {resume_skills_experience_prompt}
