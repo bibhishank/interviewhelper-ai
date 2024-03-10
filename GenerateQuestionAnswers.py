@@ -1,7 +1,5 @@
 from Utils import getGeminProModel
 
-
-
 #---------------------------------------------------------------------------------------------
 #Generate cover letter calling Gemini Pro  
 def generateQuestionAnswers(resume_text, qa_jd):
@@ -15,7 +13,7 @@ def generateQuestionAnswers(resume_text, qa_jd):
     Provide at least 10 questions and detailed ideal answer.
     """
     ]
-
+    #print(f"\n\n Question answers request: {prompt_parts} ")    
     model = getGeminProModel()
     responses = model.generate_content(prompt_parts, stream=True)
     response_stream = ""

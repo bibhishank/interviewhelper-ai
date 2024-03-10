@@ -1,13 +1,11 @@
 from Utils import getGeminProModel
 
 
-#response = ""
 #---------------------------------------------------------------------------------------------
 #Chat conversation with Gemini Pro  
 
 def getChatResponde(chat_resume_text, chat_jd, chat_input):
-    
-    
+        
     prompt_parts = [
     f""" Role: Chat Practice Partner for interviewee
         Topic: Job interview

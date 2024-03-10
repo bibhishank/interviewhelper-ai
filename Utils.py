@@ -114,7 +114,7 @@ def readPdfFile(pdf_file_path):
        return "MORE_THAN_FIVE_PAGES"
     for page_layout in extract_pages(pdf_file_path):
       page_count +=1
-      print(f"Looking for pages {page_count}")
+      #print(f"Looking for pages {page_count}")
       for element in page_layout:
           if isinstance(element, LTTextBoxHorizontal):
             #lines.extend(element.get_text().splitlines())

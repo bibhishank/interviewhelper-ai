@@ -21,7 +21,14 @@ from ChatConversation import getSimpleChatResponde1, getSimpleChatResponde2
 import Utils
 from Utils import readPdforDocFile, getGeminProModel
 import Utils as ut 
-
+import os
+from google_auth_oauthlib.flow import Flow
+import google.auth.transport.requests
+import requests
+from pip._vendor import cachecontrol
+from google.oauth2 import id_token
+import firebase_admin
+from firebase_admin import auth, exceptions, credentials, initialize_app
 
 #Not able to install streamlit_extras.let_it_rain
 # def celebration_animate():
@@ -65,6 +72,8 @@ st.set_page_config(page_title = PAGE_TITLE,
                    layout= "wide",
                    menu_items=None)
 
+## ----  Google Analytics code for website trafic tracking  -----------------------------------------------------------
+
 def inject_ga():
     GA_ID = "google_analytics"
     GA_JS = """
@@ -94,6 +103,24 @@ def inject_ga():
         index_path.write_text(new_html)
 
 inject_ga()
+
+## ----  Review and Compare skill implementation start -----------------------------------------------------------
+
+if "last_tab_clicked" not in st.session_state:
+    st.session_state.last_tab_clicked = ""
+
+if "last_uploaded_file_name" not in st.session_state:
+    st.session_state.last_uploaded_file_name = ""
+
+
+def initiate_session():
+            # Add a previous bot question  to Streamlit session state
+        if "current_question" not in st.session_state:
+            st.session_state.current_question = ""
+
+        # Add a Gemini Chat history object to Streamlit session state
+        if "very_first_request" not in st.session_state:
+            st.session_state.very_first_request = True
 
 # Remove whitespace from the top of the page and sidebar
 
@@ -140,8 +167,35 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+#CSS for login button
+st.markdown("""      
+    <style>
+        a.my_button {
+            padding: 3px 6px;
+            border: 1px outset buttonborder;
+            border-radius: 3px;
+            color: #ffffff;;
+            background-color: #0099ff;
+            text-decoration: none;
+        }
+    </style>
+""",unsafe_allow_html=True)
+
+
 with open(foot_css_file) as ft_css:
     st.markdown("<style>{}</style>".format(ft_css.read()), unsafe_allow_html=True)
+
+st.session_state.email = ''
+after_loging_redirect_uri = "http://localhost:8501"
+os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1" # to allow Http traffic for local dev
+
+# Initialize Firebase app
+cred = credentials.Certificate("./assets/interviewhelperai-953c56a8958e.json")
+try:
+    firebase_admin.get_app()
+except ValueError as e:
+    initialize_app(cred)
+
 
 # --- profile SECTION ---
 with st.container():
@@ -150,6 +204,102 @@ with st.container():
         st.image(logo_image, width=125)
     with col2:
         st.header("Interview Helper AI (Beta)")
+    with col3:
+        user_login_container = st.container()
+
+
+@st.cache_resource(experimental_allow_widgets=True)
+def getFlow():
+    client_secrets_file = os.path.join(pathlib.Path(__file__).parent, "./assets/client_secret_471004611997-9adc1u3a2verok60l2ptl3f38bf6d4hi.apps.googleusercontent.com.json")
+    flow = Flow.from_client_secrets_file(
+        client_secrets_file = client_secrets_file,
+        scopes = ["https://www.googleapis.com/auth/userinfo.profile", "https://www.googleapis.com/auth/userinfo.email", "openid"],
+        redirect_uri = after_loging_redirect_uri
+    )
+    return flow
+
+def get_logged_in_user_email():
+    try:
+        query_params = st.query_params
+        #print(f"query_params= {type(query_params.to_dict())}")
+        query_param_dict = query_params.to_dict()
+        request_url = after_loging_redirect_uri + "/?"
+        for key in query_param_dict.keys():
+            request_url += key + "=" + query_param_dict[key] + "&"
+        #print(f" request_url= {request_url}")
+        code = query_params.get('code')
+        state = query_params.get('state')
+        #print(f"First state= {state} code= {code}")
+        if code:
+                flow = getFlow()
+                flow.fetch_token(authorization_response=request_url)
+                #print("After flow.fetch_token")
+                credentials = flow.credentials
+                request_session = requests.session()
+                cached_session = cachecontrol.CacheControl(request_session)
+                token_request = google.auth.transport.requests.Request(session=cached_session)
+                GOOGLE_CLIENT_ID = st.secrets["client_id"]
+                
+                id_info = id_token.verify_oauth2_token(
+                    id_token=credentials._id_token,
+                    request=token_request,
+                    audience=GOOGLE_CLIENT_ID
+                )
+                #print(f"After getting id_info {id_info.keys()}")
+                #id_info.keys() = (['iss', 'azp', 'aud', 'sub', 'email', 'email_verified', 'at_hash', 'name', 'picture', 'given_name', 'family_name', 'locale', 'iat', 'exp'])
+                st.session_state["google_id"] = id_info.get("sub")
+                st.session_state["user_name"] = id_info.get("name")
+                st.session_state["email"] = id_info.get("email")
+                print(f'google_id = {id_info.get("sub")} user_name = {id_info.get("name")} email_id = {id_info.get("email")} picture = {id_info.get("picture")}')
+
+                user_email = id_info.get("email")
+                #creating a user in firebase
+                if user_email:
+                    try:
+                        #user = auth.get_user_by_email(user_email)
+                        user = auth.get_user_by_email(user_email)
+                        print(f"auth.get_user_by_email= {user}")
+                    except exceptions.FirebaseError:
+                        print("In inner exception")
+                        user = auth.create_user(uid=id_info.get("sub"), display_name=id_info.get("name"), email=user_email )
+                        print(f"after creating auth.create_user= {user}")
+                    st.session_state.email = user.email
+
+                #st.write(f"Hello {st.session_state['user_name']}! <br/> <a href='/'><button>Logout</button></a>")
+
+    except Exception as e:
+        print("An outer error occurred:", e)
+
+def show_login_button():
+    flow = getFlow()
+    authorization_url, state = flow.authorization_url()
+    with user_login_container:
+        st.markdown(f'<center><a href="{authorization_url}" target="_self" class="google-sign-in-button">Login with Google</a><center>', unsafe_allow_html=True)
+    get_logged_in_user_email()
+
+
+def check_login():
+    #st.title('Welcome!')
+    print(f"st.session_state.email={st.session_state.email}")
+    if not st.session_state.email:
+        #print(f"not st.session_state.email = {not st.session_state.email} = not st.session_state.email {st.session_state.email}")
+        #print("calling get_logged_in_user_email()")
+        get_logged_in_user_email()
+        if not st.session_state.email:
+            #print("calling show_login_button()")
+            show_login_button()
+
+    if st.session_state.email:
+        #st.write(st.session_state.email)
+        with user_login_container:
+            #print(f" User name in session= {st.session_state.user_name} ")
+            st.write(st.session_state.user_name)
+            if st.button("Logout", type="primary", key="logout_non_required"):
+                st.session_state.email = ''
+                print("Calling rerun")
+                st.rerun()
+
+check_login()
 
 with st.container():
     selected = option_menu(
@@ -175,32 +325,63 @@ with st.container():
     resume_and_jd_uploaded = False
     #st.write(f"In the beginning before uploading file: {st.session_state}")
     #expander_string = ":heavy_multiplication_x: **Upload Resume**   ---------   :heavy_multiplication_x: **Provide Job Desctiption** "
-    expander_string = ":heavy_multiplication_x: **Upload Resume and Provide Job Desctiption** :small_red_triangle_down: "
+    expander_string = ":heavy_multiplication_x: **Upload Resume and Provide Job Desctiption** :small_red_triangle_down: (one time activity)"
     is_expanded = True
     if "resume_text" not in st.session_state:
         st.session_state.resume_text = ""
     if "job_description_text" not in st.session_state:
         st.session_state.job_description_text = ""
 
-    if len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) > 0:
+    
+    select_file_for_upload = ""
+    if "selected_file_to_upload"  not in st.session_state:
+        st.session_state.selected_file_to_upload = ""
+    else:
+        select_file_for_upload = st.session_state.selected_file_to_upload
+    
+    if "file_reuploaded_chat_update" not in st.session_state:
+        st.session_state.file_reuploaded_chat_update = False
+
+    if "file_reuploaded_audio_update" not in st.session_state:
+        st.session_state.file_reuploaded_audio_update = False
+
+    if "audio_coversation_tab_cliecked" not in st.session_state:
+        st.session_state.audio_coversation_tab_cliecked = False
+
+
+    #print(f"st.session_state.last_uploaded_file_name {st.session_state.last_uploaded_file_name} and  select_file_for_upload ={select_file_for_upload}")
+    #print(st.session_state.last_uploaded_file_name != select_file_for_upload)
+    
+    if len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) > 0 :
         resume_and_jd_uploaded = True
         expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Desctiption  "
         is_expanded = False
+        #print("in new condition 1")
+    elif len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) > 0 and st.session_state.last_uploaded_file_name != select_file_for_upload:
+        #print("in new condition2")
+        resume_and_jd_uploaded = False
+        expander_string = " :white_check_mark: Reusme    :heavy_multiplication_x: **Upload changes** :small_red_triangle_down:  "
+        is_expanded = True
+
     elif len(st.session_state.resume_text) <=0 and len(st.session_state.job_description_text) > 0:
+        #print("in new condition3")
         resume_and_jd_uploaded = False
         expander_string = " :white_check_mark: Reusme    :heavy_multiplication_x: **Provide Job Desctiption** :small_red_triangle_down:  "
         is_expanded = True
 
     elif len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) <=0:    
+        #print("in new condition4")
         resume_and_jd_uploaded = False
         expander_string = " :heavy_multiplication_x: **Upload Reusme** :small_red_triangle_down:    :white_check_mark:Job Desctiption  "
         is_expanded = True
     elif len(st.session_state.resume_text) <=0 and len(st.session_state.job_description_text) <=0:
+        #print("in new condition5")
         resume_and_jd_uploaded = False
-        expander_string = " :heavy_multiplication_x: **Upload Resume and Provide Job Desctiption** :small_red_triangle_down: "
+        expander_string = " :heavy_multiplication_x: **Upload Resume and Provide Job Desctiption** :small_red_triangle_down: (one time activity)"
         is_expanded = True
 
     #resume_jd_message_container = st.container(border=True)
+    #print(f"is_expanded= {is_expanded}")
 
     resume_job_expander_container = st.container()
     with resume_job_expander_container:
@@ -210,7 +391,9 @@ with st.container():
             resume_col, jd_col =  st.columns([1, 1])
             with resume_col:
                 st.write("")
-                resume_main_file = st.file_uploader("Upload resume (.pdf or .docx) :red[*] ", type=['pdf','doc','docx'], key="resume_file_key")
+                resume_main_file = st.file_uploader("Upload resume (.pdf or .docx) :red[*] ", type=['pdf','docx'], key="resume_file_key")
+                if resume_main_file:
+                    st.session_state.selected_file_to_upload = resume_main_file.name
             with jd_col:
                 jd_main_content = st.text_area(
                     label = "Job Description :red[*] ",
@@ -220,6 +403,11 @@ with st.container():
                     )
             resume_jd_upload_button_col, resume_jd_upload_message_col  =  st.columns([1, 9])
             with resume_jd_upload_button_col:
+                m = st.markdown("""
+                    <style>
+                    div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                    </style>""", unsafe_allow_html=True)
+                
                 resume_jd_submit_button = st.button(label="Upload")
             with resume_jd_upload_message_col:    
                 resume_jd_message_container = st.container(border=False)
@@ -230,27 +418,33 @@ with st.container():
             #print("Submitted... ")
             if(resume_main_file is not None and jd_main_content and len(jd_main_content)> 50):
                 resume_jd_message_container.success("Process started")
-                resume_text = ut.readPdforDocFile(resume_main_file)
-                if resume_text == "MORE_THAN_FIVE_PAGES":
-                    resume_jd_message_container.error("PDF file contains more than 5 pages, please upload file with 5 or less pages.")
-                elif resume_text == "LESS_TEXT_IN_PDF":
-                    resume_jd_message_container.error("File has not enough content(less than 200 charater) readable content, please reupload file with enough content.")
-                elif resume_text == "MORE_TEXT_IN_PDF":
-                    resume_jd_message_container.error("File is too large, please reduce text size and re-upload file.")
-                elif resume_text == "ERROR_READING_FILE":
-                    resume_jd_message_container.error("System is not able to read provided file, please provided valid .pdf file .")
-                elif resume_text == "UNSUPPORTED_FILE_TYPE":
-                    resume_jd_message_container.error("Unsupported file type, accepted file types are .pdf, .doc or .docx ")    
-                elif resume_text == "SUCCESS":
-                    ut.setJobDescriptionText(jd_main_content)
-                    ut.verifyResumeandJDSize()
-                    #resume_job_expander #check if expander lable can be changed
-                    st.session_state.resume_text = resume_text
-                    st.session_state.job_description_text = jd_main_content
-                    #st.write(f"After uploading file: {st.session_state}")
-                    expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Desctiption  "
-                    is_expanded = False
-                    resume_jd_message_container.success("File uploaded sucessfully")
+                try:
+                    resume_text = ut.readPdforDocFile(resume_main_file)
+                    if resume_text == "MORE_THAN_FIVE_PAGES":
+                        resume_jd_message_container.error("PDF file contains more than 5 pages, please upload file with 5 or less pages.")
+                    elif resume_text == "LESS_TEXT_IN_PDF":
+                        resume_jd_message_container.error("File has not enough content(less than 200 charater) readable content, please reupload file with enough content.")
+                    elif resume_text == "MORE_TEXT_IN_PDF":
+                        resume_jd_message_container.error("File is too large, please reduce text size and re-upload file.")
+                    elif resume_text == "ERROR_READING_FILE":
+                        resume_jd_message_container.error("System is not able to read provided file, please provided valid .pdf file .")
+                    elif resume_text == "UNSUPPORTED_FILE_TYPE":
+                        resume_jd_message_container.error("Unsupported file type, accepted file types are .pdf, .doc or .docx ")    
+                    elif resume_text == "SUCCESS":
+                        st.session_state.last_uploaded_file_name = resume_main_file.name
+                        ut.setJobDescriptionText(jd_main_content)
+                        ut.verifyResumeandJDSize()
+                        st.session_state.resume_text = ut.getResumeText()
+                        st.session_state.job_description_text = jd_main_content
+                        st.session_state.file_reuploaded = True
+                        st.session_state.file_reuploaded_chat_update = True
+                        st.session_state.file_reuploaded_audio_update = True
+                        #print(f"st.session_state.resume_text = {st.session_state.resume_text} \n and \n st.session_state.job_description_text = {st.session_state.job_description_text} ")
+                        expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Desctiption  "
+                        is_expanded = False
+                        resume_jd_message_container.success("File uploaded sucessfully")
+                except Exception as e:
+                    print("An error occurred:", e)
 
             elif resume_main_file is None and (jd_main_content is None or len(jd_main_content) <= 0):
                 resume_jd_message_container.error(" :red[Please upload your resume and include job descriptions.]")
@@ -266,8 +460,11 @@ with st.container():
 
 ## ----  Review and Compare skill implementation start -----------------------------------------------------------
 if selected == 'Skills & JD review':
-    
-    #if st.session_state.skillJDReview_loaded == False:
+    #print("Current tab = Skills & JD review")
+    #print(f"Last tab ={st.session_state.last_tab_clicked}")
+    last_tab_selected = st.session_state.last_tab_clicked
+    st.session_state.last_tab_clicked = "Skills & JD review"
+
     if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
         resume_review_container = st.container(border=True)
         with resume_review_container:
@@ -304,7 +501,7 @@ if selected == 'Skills & JD review':
                 rjr_loading_indicator_container = st.container()
                 #rjr_error_message = st.success("")
                 #rjr_message_response = st.success()
-                rjr_message_response = st.container()
+                rjr_message_response = st.empty()
                 if len(st.session_state.skillJDReview_value) > 0:
                     rjr_message_response.success(st.session_state.skillJDReview_value)
 
@@ -312,18 +509,27 @@ if selected == 'Skills & JD review':
                 with rjr_loading_indicator_container:
                     rjr_loading_indicator = st.spinner("Reviewing skills alignment for the Job Description, please wait...")
                     #rjr_error_message = st.spinner("Reviewing Job Description and Resume, please wait...")
-                    with rjr_loading_indicator:
-                        rjr_response = getSkillAndRequirementReview(st.session_state.resume_text, st.session_state.job_description_text)
-                    #print(cover_letter_text)
-                    st.session_state.skillJDReview_loaded = True
-                    st.session_state.skillJDReview_value = rjr_response
-                    rjr_message_response.success(rjr_response)
+                    try:
+                        with rjr_loading_indicator:
+                            rjr_response = getSkillAndRequirementReview(st.session_state.resume_text, st.session_state.job_description_text)
+                        #print(cover_letter_text)
+                        st.session_state.skillJDReview_loaded = True
+                        st.session_state.skillJDReview_value = rjr_response
+                        rjr_message_response.empty()
+                        rjr_message_response.success(rjr_response)
+                    except Exception as e:
+                        print("An error occurred:", e)
+
     else:
         st.toast("Upload Resume and provide Job Description")
     #st.write(st.session_state)
 
 ## ----  Interview Questions and sample answers implementation start -----------------------------------------------------------
 if selected == 'Interview Q & A':
+    #print("Current tab = Interview Q & A")
+    #print(f"Last tab ={st.session_state.last_tab_clicked}")
+    st.session_state.last_tab_clicked = "Interview Q & A"
+
     if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
         interview_que_ans_container = st.container(border=True)
         with interview_que_ans_container:
@@ -359,22 +565,30 @@ if selected == 'Interview Q & A':
             qa_message_container = st.container()
             with qa_message_container:
                 qa_loading_indicator_container = st.container()
-                qa_message_response = st.container()
+                qa_message_response = st.empty()
                 if len(st.session_state.questionAnswer_value) > 0:
                     qa_message_response.success(st.session_state.questionAnswer_value)
 
             if interview_que_ans_button:
                 with qa_loading_indicator_container:
                     interview_que_ans_loading = st.spinner("Generating interview questions and ideal asnswers, please wait...")
-                    with interview_que_ans_loading:
-                        qa_response = generateQuestionAnswers(st.session_state.resume_text, st.session_state.job_description_text)
-                    #st.session_state.skill = True
-                    st.session_state.questionAnswer_value = qa_response                    
-                    
-                    qa_message_response.success(qa_response)
+                    try:
+                        with interview_que_ans_loading:
+                            qa_response = generateQuestionAnswers(st.session_state.resume_text, st.session_state.job_description_text)
+                        #st.session_state.skill = True
+                        st.session_state.questionAnswer_value = qa_response   
+                        qa_message_response.empty()                 
+                        qa_message_response.success(qa_response)
+                    except Exception as e:
+                        print("An error occurred:", e)
+
 
 ## ----  Cover letter implementation start -----------------------------------------------------------
 if selected == 'Cover Letter' :
+    #print("Current tab = Cover Letter")
+    #print(f"Last tab ={st.session_state.last_tab_clicked}")
+    st.session_state.last_tab_clicked = "Cover Letter"
+
     if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
         cover_letter_container = st.container(border=True)
         with cover_letter_container:
@@ -416,12 +630,12 @@ if selected == 'Cover Letter' :
             cover_letter_message_container = st.container()
             with cover_letter_message_container:
                 cover_letter_loading_indicator_container = st.container()
-                cover_letter_message_response = st.container()
+                cover_letter_message_response = st.empty()
                 if len(st.session_state.coverLetter_value) > 0:
                     cover_letter_message_response.success(st.session_state.coverLetter_value)
 
             if cover_letter_button:
-                print(f"job_title: {job_title is None}  len(job_title)= {len(job_title)} company: {company is not None}  len(company) {len(company)}")
+                #print(f"job_title: {job_title is None}  len(job_title)= {len(job_title)} company: {company is not None}  len(company) {len(company)}")
                 try:
                     if len(job_title) >1 and len(company) >1:
                         #print("Condition satisfied")
@@ -431,7 +645,6 @@ if selected == 'Cover Letter' :
                                 cover_letter_text = generateCoverLetter(st.session_state.resume_text, job_title, st.session_state.job_description_text, company)
                             st.session_state.coverLetter_value = cover_letter_text
                             cover_letter_message_response.empty()
-                            #cover_letter_message_response.sucess("")
                             cover_letter_message_response.success(cover_letter_text)                
                     elif len(job_title) >1 and len(company) <=0:
                         cover_letter_message_response.error("Company name is missing.")
@@ -446,14 +659,18 @@ if selected == 'Cover Letter' :
 
 ## ----  Chat coversation start-------------------------------------------------------------------------
 if selected == 'Chat Coversation':
+    #print("Current tab = Chat Coversation")
+    #print(f"Last tab ={st.session_state.last_tab_clicked}")
+    st.session_state.last_tab_clicked = "Chat Coversation"
+
     #TODO: introduce get started button
     if "skill_review_button_clicked" not in st.session_state:
         st.session_state.skill_review_button_clicked = False
             
     # Initialize session state for chat history if it doesn't exist 
-    chat_conversation_container = st.container(border=True)
-    with chat_conversation_container:
-        if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+    if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+        chat_conversation_container = st.container(border=True)
+        with chat_conversation_container:
             st.markdown(f" <small>This Interview like conversation offers a realistic simulation of the interview process, helping users build confidence and refine their responses in a supportive environment. This is is an immersive experience where users engage in simulated interviews facilitated by artificial intelligence.</small>"
                         , unsafe_allow_html=True)  
             st.markdown( """ <style>
@@ -499,8 +716,8 @@ if selected == 'Chat Coversation':
             if "chat" not in st.session_state:
                 st.session_state.chat = model.start_chat(history = [])
 
-            if "very_first_request" not in st.session_state:
-                st.session_state.very_first_request = True
+            if "chat_very_first_request" not in st.session_state:
+                st.session_state.chat_very_first_request = True
 
             first_container = st.container(height=380, border=False)
             second_container = st.container()
@@ -511,12 +728,15 @@ if selected == 'Chat Coversation':
                         with st.chat_message(ut.role_to_streamlit(message.role)):
                             st.markdown(message.parts[0].text)
 
-                if st.session_state.very_first_request == True:
+                if st.session_state.chat_very_first_request == True or st.session_state.file_reuploaded_chat_update == True:
+                    if st.session_state.file_reuploaded_chat_update == True:
+                        print("File update detected")
                     with st.spinner('💡 Generating question, please wait'):
                         chat_response = st.session_state.chat.send_message(ut.getChat_first_prompt(st.session_state.resume_text, st.session_state.job_description_text)) 
+                        st.session_state.file_reuploaded_chat_update = False
                     #print(f"Sending first request: {first_prompt_template}")
                     if chat_response and len(chat_response.text) >=0:
-                        st.session_state.very_first_request = False
+                        st.session_state.chat_very_first_request = False
                         #print(f"Debug 4 {st.session_state.skill_review_button_clicked}")
                         chat_conversation_button_container.empty()
 
@@ -535,141 +755,180 @@ if selected == 'Chat Coversation':
                     st.chat_message("user").markdown(second_prompt)
                     
                     # Send user entry to Gemini and read the response
-                    #print(st.session_state.very_first_request)
+                    #print(st.session_state.chat_very_first_request)
                     second_prompt_with_ans = "Answer:" + second_prompt
                     with st.spinner('💡 Processing'):
                         second_response = st.session_state.chat.send_message(second_prompt_with_ans)
-                    #print(f"Sending second request: {prompt} ")
+                    #print(f"Sending second request: {prompt}")
                     
                     if second_response and len(second_response.text) >=0:
-                        st.session_state.very_first_request = False
-                    # Display last 
-                    with st.chat_message("assistant"):
-                        st.markdown(second_response.text)
+                        st.session_state.chat_very_first_request = False
+                        # Display last 
+                        with st.chat_message("assistant"):
+                            st.markdown(second_response.text)
 
 ## ----  Chat coversation end----------------------------
 
 
 ## ----  Audio coversation implementation starts----------------------------
 if selected == 'Audio Conversation':
-    aundio_conversation_container = st.container()
-    with aundio_conversation_container:
-        multi = ''' 
-         <small>Interview like audio conversation with AI, opportunity to practice responding to these questions in a simulated environment. Through continuous repetition and practice, you can refine your answers and improve  overall interview performance, aided by the AI's feedback and guidance throughout the process. </small>
-        '''
-        st.markdown(multi, unsafe_allow_html=True)
-        
-        model = ut.getGeminProModel()
-        audio_first_prompt_template = ut.getAudio_first_prompt(st.session_state.resume_text, st.session_state.job_description_text)
+    #print("Current tab = Audio Conversation")
+    print(f"Last tab ={st.session_state.last_tab_clicked}")
+    if(st.session_state.last_tab_clicked != "Audio Conversation"):
+        st.session_state.audio_coversation_tab_cliecked = True
+    
+    st.session_state.last_tab_clicked = "Audio Conversation"
 
-        # Add a previous bot question  to Streamlit session state
-        if "previous_question" not in st.session_state:
-            st.session_state.previous_question = ""
-        # Add a current bot question  to Streamlit session state
-        if "current_question" not in st.session_state:
-            st.session_state.current_question = ""
+    if "audio_conv_button_clicked" not in st.session_state:
+        st.session_state.audio_conv_button_clicked = False
 
-        # Add a Gemini Chat history object to Streamlit session state
-        if "chat" not in st.session_state:
-            st.session_state.chat = model.start_chat(history = [])
-            #st.session_state.chat = model.start_chat(prompt_template)
+    
 
-        if "very_first_request" not in st.session_state:
-            st.session_state.very_first_request = True
+    #print(f"setting in the beginning = { st.session_state.audio_coversation_tab_cliecked } ")
 
-        first_container = st.container(height=200)
-        second_container = st.container()
-        
-        with first_container:
-            message_request_counter = 0
-            for message in st.session_state.chat.history:
-                x = message.parts[0].text.find("Role: Chat Practice Partner for interview")
-                if x < 0:
-                    #with st.chat_message(ut.role_to_streamlit(message.role)):
-                    message_request_counter += 1
-                        #st.markdown(message.parts[0].text) - Not printing messages in history
-            #print(f"Message counter: {message_request_counter} ")    
+    if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+        audio_conversation_container = st.container(border=True)
+        with audio_conversation_container:
+            multi = ''' 
+            <small>Interview like audio conversation with AI, opportunity to practice responding to these questions in a simulated environment. Through continuous repetition and practice, you can refine your answers and improve  overall interview performance, aided by the AI's feedback and guidance throughout the process. </small>
+            '''
+            st.markdown(multi, unsafe_allow_html=True)
+            st.markdown( """ <style>
+                        #rcorners2 {
+            border-radius: 25px;
+            border: 2px solid #73AD21;
+            padding: 20px; 
+            }
+            </style>
+                        """,  unsafe_allow_html=True)
+
+            audio_conf_info_col1, audio_conf_info_col2, audio_conf_info_col3 = st.columns([1,1,1])
+            with audio_conf_info_col1:
+                st.markdown(f"<p id='rcorners2'> 🦾 Offers individuals an opportunity to practice responding to various questions commonly asked in interviews. </p>", unsafe_allow_html=True)
+            with audio_conf_info_col2:
+                st.markdown(f"<p id='rcorners2'> 🦾 By repeatedly answering questions from the AI, individuals can improve their overall interview performance over time. </p>", unsafe_allow_html=True)
+            with audio_conf_info_col3:
+                st.markdown(f"<p id='rcorners2'> 🦾 This personalized feedback aids individuals in honing their interview skills and building confidence for actual interviews. </p>", unsafe_allow_html=True)
             
-            lets_get_started_cotainer = st.empty()
-            lets_get_started = None
-            if st.session_state.very_first_request == True and len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
-                with lets_get_started_cotainer:
-                    lets_get_started = st.button("Let's get started")
+            initiate_session()
 
-            # if lets_get_started:
-            #     st.session_state.very_first_request = True
-            #     lets_get_started_cotainer.empty()
-        
-            if lets_get_started and st.session_state.very_first_request == True:
-                #print(f"Sending first request: {audio_first_prompt_template}")
-                with st.spinner('💡Thinking'):
-                    lets_get_started_cotainer.empty()
-                    response_for_audio1 = st.session_state.chat.send_message(audio_first_prompt_template) 
-                if response_for_audio1 and len(response_for_audio1.text) >=0:
-                    #print(f"First request Response : {response_for_audio1}")
-                    st.session_state.very_first_request = False
-                    st.session_state.previous_question = response_for_audio1.text
-                    # Display last
-                    with st.chat_message("assistant"):
-                        #Render first Audio response
-                        question_audio_container =st.container()
-                        with question_audio_container:
-                            text = f"<h3 style='text-align: left; '> Liesten to the question</h3>"
+            audio_conversation_button_container = st.empty()
+            if st.session_state.audio_conv_button_clicked == False and len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+                with audio_conversation_button_container.container(border=True):
+                    #print(f"Debug 1 {st.session_state.skill_review_button_clicked}")
+                    chat_btn_col1, chat_btn_btn_col2, chat_btn_btn_col3 = st.columns([1,1,1])
+                    with chat_btn_btn_col2:                
+                        m = st.markdown("""
+                            <style>
+                            div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                            </style>""", unsafe_allow_html=True)
+                        audio_conversation_button = st.button(label="Let's get audio conversation started.")
+                    if audio_conversation_button:
+                        st.session_state.audio_conv_button_clicked = True
+                        st.session_state.audio_coversation_tab_cliecked = False
+                        audio_conversation_button_container.empty()
+            else:
+                audio_conversation_button_container.empty()
+
+            if(st.session_state.audio_conv_button_clicked ) and len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
+                st.session_state.audio_conv_button_clicked = True
+                #print("Let's get conversation started, Button action.")
+                audio_model = ut.getGeminProModel()
+                # Add a Gemini Chat history object to Streamlit session state
+                if "audio_chat" not in st.session_state:
+                    st.session_state.audio_chat = audio_model.start_chat(history = [])
+
+                if "audio_very_first_request" not in st.session_state:
+                    st.session_state.audio_very_first_request = True
+
+                audio_first_container = st.container(height=200, border=True)
+                #audio_second_container = st.container()
+                audio_second_container = st.empty()
+                with audio_first_container:
+                    if st.session_state.audio_very_first_request == True or st.session_state.file_reuploaded_audio_update == True:
+                        if st.session_state.file_reuploaded_audio_update == True:
+                            #print("File update detected for audio")
+                            st.session_state.audio_chat = audio_model.start_chat(history = [])
+                        with st.spinner('💡 Generating question, please wait...'):
+                            audio_first_prompt_template = ut.getAudio_first_prompt(st.session_state.resume_text, st.session_state.job_description_text)
+                            st.session_state.file_reuploaded_audio_update = False
+                            response_for_audio1 = st.session_state.audio_chat.send_message(audio_first_prompt_template) 
+                            #print("First response received")
+                        if response_for_audio1 and len(response_for_audio1.text) >=0:
+                            st.session_state.current_question = response_for_audio1.text
+                            st.session_state.audio_very_first_request = False
+                            st.session_state.audio_coversation_tab_cliecked = False
+                            audio_conversation_button_container.empty()
+                            #print("First response received, set all the variables")
+
+                        with st.chat_message("assistant"):
+                            #print("Adding message with assisatant")
+                            #print("Writing click message and audio content")
+                            #with st.spinner('💡 Generating question, please wait...'):
+                            text = f"<h5 style='text-align: left; '> Click on play to liesten to the question </h5>"
                             sound_file = BytesIO()
                             tts = gTTS(response_for_audio1.text, lang='en')
                             tts.write_to_fp(sound_file)
-                            #print("Showing Audio control")
                             st.markdown(text, unsafe_allow_html=True)
                             st.audio(sound_file)
-                            #st.markdown(response.text)
-                            lets_get_started_cotainer.empty()                            
-            
-            if st.session_state.very_first_request == False:
-                # Accept user's next message, add to context, resubmit context to Gemini
-                with second_container:
-                    # Add button instead of the chat input
-                    #prompt = st.chat_input("Answer")
-                    next_question = st.button("Next question")
-                
-                if next_question: 
-                    # Send user entry to Gemini and read the response
-                    prompt = "NO Answer" 
-                    #print(f"Sending second request: {prompt} ")
-                    with st.spinner('💡Thinking'):
-                        response = st.session_state.chat.send_message(prompt)                    
-                        #print(f"Response of second request: {response} ")
-                    if response and len(response.text) >=0:
-                        st.session_state.very_first_request = False
-                    # Display last 
-                    first_container.empty()
+                            #print("Done with writing video content")
+                        audio_conversation_button_container.empty()
 
-                    #with first_container:
-                    question_audio_container =st.container()
-                    with question_audio_container:
+                    # Accept user's next message, add to context, resubmit context to Gemini
+                    with audio_second_container:
+                        m = st.markdown("""
+                            <style>
+                            div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                            </style>""", unsafe_allow_html=True)
+                        nextaudio_btn_col1, nextaudio_btn_btn_col2, nextaudio_btn_btn_col3 = st.columns([1,1,1])
+                        with nextaudio_btn_btn_col2:                
+                            audio_next_question = st.button(" Generate next question ")
+                    
+                    #print(f"st.session_state.audio_conv_button_clicked = {st.session_state.audio_conv_button_clicked}  st.session_state.audio_coversation_tab_cliecked ={st.session_state.audio_coversation_tab_cliecked}")
+                    tmp_container = st.empty()
+                    if st.session_state.audio_conv_button_clicked and st.session_state.audio_coversation_tab_cliecked:
+                        #print("Tab clicked when second time and showing old questions")
+                        audio_first_container.empty()
+                        with tmp_container:
+                            with st.chat_message("assistant"):
+                                #Store this response, as a current question in session, and move current question value to previous question
+                                with st.spinner('💡 Processing...'):
+                                    text = f"<h5 style='text-align: left; '> Click on play to liesten to the question </h5>"
+                                    #print(text)
+                                    st.markdown(text, unsafe_allow_html=True)
+                                    second_sound_file = BytesIO()
+                                    tts1 = gTTS(st.session_state.current_question, lang='en')
+                                    tts1.write_to_fp(second_sound_file)
+                                    st.audio(second_sound_file)
+                                    st.session_state.audio_coversation_tab_cliecked = False
+
+                    if audio_next_question:
+                        #print("Button click event started")
+                        prompt = "NO Answer" 
+                        tmp_container.empty()
+                        audio_first_container.empty()
+                        with st.spinner('💡 Getting next question...'):
+                            response_for_audio2 = st.session_state.audio_chat.send_message(prompt)                    
+                        if response_for_audio2 and len(response_for_audio2.text) >=0:
+                            st.session_state.very_first_request = False
+                        audio_first_container.empty()
+                        st.session_state.audio_coversation_tab_cliecked = False
+
                         with st.chat_message("assistant"):
                             #Store this response, as a current question in session, and move current question value to previous question
-                            tmp_text = st.session_state.current_question
-                            st.session_state.previous_question = tmp_text
-                            st.session_state.current_question = response.text
-                            
-                            #question_audio_container.empty()
-                            #with question_audio_container:
-                            text = f"<h3 style='text-align: left; '> Liesten to the question</h3>"
+                            st.session_state.current_question = response_for_audio2.text
+                            text = f"<h5 style='text-align: left; '> Click on play to liesten to the question </h5>"
                             #print(text)
                             st.markdown(text, unsafe_allow_html=True)
                             second_sound_file = BytesIO()
-                            tts1 = gTTS(response.text, lang='en')
+                            tts1 = gTTS(response_for_audio2.text, lang='en')
                             tts1.write_to_fp(second_sound_file)
                             st.audio(second_sound_file)
-
-                            #Render Audio of last question
-                            #st.markdown(response.text)                            
-                    #else:
-                    #    print("No response for the first request")     
+  
 
 ##- Celebration with dropping ballon or any other emoji
 #celebration_animate()
-st.write("#")
+#--- Footer code 
 st.write("#")
 st.write("#")
 footer_container = st.container(border=True)

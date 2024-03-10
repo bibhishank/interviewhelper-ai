@@ -22,9 +22,12 @@ def getSkillAndRequirementReview(resume_text, rjr_jd):
   ]
 
   #print("\n\n\n\n\n")
-  #print(prompt_parts)
+  #print(f"\n\n Review resume and JD request: {prompt_parts} ")    
   #return "Wait for the responde"
   model = getGeminProModel()
+  #TODO:
+  #print(f"prompt_parts :::= {prompt_parts}")
+
   responses = model.generate_content(prompt_parts, stream=True)
   response_stream = ""
   for response in responses:

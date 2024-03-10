@@ -2,7 +2,6 @@ from Utils import getGeminProModel
 
 #---------------------------------------------------------------------------------------------
 #Generate cover letter calling Gemini Pro  
-#def generateCoverLetter(resume_text, skills, job_title, industry, jd, company, letter_length, experience_years):
 def generateCoverLetter(resume_text, job_title, jd, company):  
    #generateCoverLetter(resume_text, job_title, jd, company)
   resume_skills_experience_prompt = ""
@@ -21,28 +20,24 @@ def generateCoverLetter(resume_text, job_title, jd, company):
   #print(f"resume_skills_experience_prompt {resume_skills_experience_prompt}, \n job_title  {job_title}, \n industry {industry}, \n jd {jd}, \n company_prompt {company_prompt} , \n letter_length = {letter_length}, \n experience_years_prompt = {experience_years_prompt} ")
  #Write a conversational, more than {letter_length} words cover letter for a \"{job_title}\" role in the \"{industry}\" industry. 
   prompt_parts = [
-    f""" Role: Job application cover letter writer
-      Topic: Job interview
-      Style: Casual, respectful, not too enthusiastic or flowery.
+    f""" Role: Job application cover letter writer.
+    Topic: Job interview.
+    Style: Casual, respectful, not too enthusiastic or flowery.
 
-      Steps: 
-      Gather company information.
-      Review Resume.
-      Analyze Job Description and gather company information and influence cover letter with that information.
+    Steps: 
+    Gather company information.
+    Review Resume.
+    Analyze Job Description and gather company information and influence cover letter with that information.
+    With all these infomation,  Write a conversational, more than 500 words cover letter for a \"{job_title}\" role.
+    Cover letter should be more than 500 words.
       
-      With all these infomation,  Write a conversational, more than 500 words cover letter for a \"{job_title}\" role.
-      
-      Cover Letter should not be less than 1000 charaters.
-
     {company_prompt}
     {resume_skills_experience_prompt}
     Candidate Job description: \"{jd}\" 
-    Complete the last sentence. 
     """
   ]
-  
+  #print(f"\n\n Cover letter request: {prompt_parts} ")
   model = getGeminProModel()
-
   responses = model.generate_content(prompt_parts, stream=True)
   response_stream = ""
   for response in responses:
