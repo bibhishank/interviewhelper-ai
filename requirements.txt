@@ -8,3 +8,5 @@ pdfminer == 20191125
 pdfminer.six == 20231228
 docx2txt == 0.8
 gtts == 2.5.1
+google-auth-oauthlib == 1.2.0
+firebase-admin == 6.4.0

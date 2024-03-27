@@ -4,6 +4,7 @@ from io import BytesIO
 
 import streamlit as st
 from streamlit_option_menu import option_menu
+# from streamlit_modal import Modal
 #from streamlit_extras.let_it_rain import rain #For animation
 
 import google.generativeai as genai 
@@ -40,11 +41,6 @@ from firebase_admin import auth, exceptions, credentials, initialize_app
 #         #animation_length= [] "infinite",
 #     )
 
-def load_css():
-    with open("static/styles.css", "r") as f:
-        css = f"<style>{f.read()}</style>"
-        st.markdown(css, unsafe_allow_html=True)
-
 number_of_pages = 0
 text_length_char = 0
 text_length_char_txt = 0
@@ -67,15 +63,27 @@ PAGE_TITLE = "Interview Helper AI"
 PAGE_ICON = pg_icon
 #":large_green_circle:"    # :wave:"    #:technologist"
 
-st.set_page_config(page_title = PAGE_TITLE, 
-                   page_icon =  icon_image, 
-                   layout= "wide",
-                   menu_items=None)
+st.set_page_config(page_title = PAGE_TITLE, page_icon =  icon_image, layout= "wide", menu_items=None)
+#st.set_page_config(page_title = PAGE_TITLE, page_icon =  web_icon, layout= "wide", menu_items=None)
+
+
+#-- below commented code is for showing Modal for Privacy Policy and Terms and Conditions
+# privacy_polict_modal = Modal(key="privacy_policy",title="Privacy Policy")
+# def open_privacy_popup(str):
+#     with privacy_polict_modal.container():
+#         st.markdown(str, unsafe_allow_html=True)
+
+# term_condition_modal = Modal(key="terms_and_condition",title="Terms and Conditions")
+# def open_term_popup(str):
+#     with term_condition_modal.container():
+#         st.markdown(str, unsafe_allow_html=True)
 
 ## ----  Google Analytics code for website trafic tracking  -----------------------------------------------------------
+if "google_tag_found" not in st.session_state:
+    st.session_state.google_tag_found = False
 
 def inject_ga():
-    GA_ID = "google_analytics"
+    GA_ID = "G-L7CQSR3TWT"
     GA_JS = """
     <!-- Global site tag (gtag.js) - Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-L7CQSR3TWT"></script>
@@ -90,9 +98,19 @@ def inject_ga():
 
     # Insert the script in the head tag of the static template inside your virtual
     index_path = pathlib.Path(st.__file__).parent / "static" / "index.html"
+    #print(index_path) 
     logging.info(f'editing {index_path}')
     soup = BeautifulSoup(index_path.read_text(), features="html.parser")
-    if not soup.find(id=GA_ID): 
+
+    #google_tag_found = False
+
+    for item in soup.find_all('script'):
+        if 'G-L7CQSR3TWT' in item.text:
+            #print(f"Line found {item.text}")
+            st.session_state.google_tag_found = True
+
+    #if not soup.find(id=GA_ID): 
+    if st.session_state.google_tag_found == False: 
         bck_index = index_path.with_suffix('.bck')
         if bck_index.exists():
             shutil.copy(bck_index, index_path)  
@@ -102,10 +120,10 @@ def inject_ga():
         new_html = html.replace('<head>', '<head>\n' + GA_JS)
         index_path.write_text(new_html)
 
-inject_ga()
+if st.session_state.google_tag_found == False:
+    inject_ga()
 
 ## ----  Review and Compare skill implementation start -----------------------------------------------------------
-
 if "last_tab_clicked" not in st.session_state:
     st.session_state.last_tab_clicked = ""
 
@@ -140,7 +158,6 @@ st.markdown("""
 #TODO: Move this Utils.py
 st.markdown("""
     <style>
-    
            /* Remove blank space at top and bottom */ 
            .block-container {
                padding-top: 0rem;
@@ -150,7 +167,7 @@ st.markdown("""
            /* Remove blank space at the center canvas */ 
            .st-emotion-cache-z5fcl4 {
                position: relative;
-               top: -20px;
+               top: 5px;
                }
            
            /* Make the toolbar transparent and the content below it clickable */ 
@@ -181,15 +198,49 @@ st.markdown("""
     </style>
 """,unsafe_allow_html=True)
 
+st.markdown(
+    """
+    <style>
+    .element-container:has(style){
+        display: none;
+    }
+    #button-after {
+        display: none;
+    }
+    .element-container:has(#button-after) {
+        display: none;
+    }
+    .element-container:has(#button-after) + div button {
+        background: none!important;
+        border: none;
+        padding: 0!important;
+        text-align: left; 
+        color: #5C6BC0 ;
+        text-decoration: none;
+        cursor: pointer;        
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+def load_css():
+    with open("static/styles.css", "r") as f:
+        css = f"<style>{f.read()}</style>"
+        st.markdown(css, unsafe_allow_html=True)
+ 
+load_css()
 
 with open(foot_css_file) as ft_css:
     st.markdown("<style>{}</style>".format(ft_css.read()), unsafe_allow_html=True)
 
-st.session_state.email = ''
+if "email" not in st.session_state:
+    st.session_state.email = ''
+
 after_loging_redirect_uri = "http://localhost:8501"
 os.environ["OAUTHLIB_INSECURE_TRANSPORT"] = "1" # to allow Http traffic for local dev
 
-# Initialize Firebase app
+# Initialize Firebase app 
 cred = credentials.Certificate("./assets/interviewhelperai-953c56a8958e.json")
 try:
     firebase_admin.get_app()
@@ -197,14 +248,17 @@ except ValueError as e:
     initialize_app(cred)
 
 
+
 # --- profile SECTION ---
 with st.container():
-    col1, col2, col3 = st.columns(3, gap="small")
+    col1, col2, col3 = st.columns([2,6,2], gap="small")
     with col1:
         st.image(logo_image, width=125)
     with col2:
-        st.header("Interview Helper AI (Beta)")
+        #st.header("Interview Helper AI (Beta)")
+        st.markdown('<center><h1>Interview Helper AI (Beta)</h1></center>', unsafe_allow_html=True)
     with col3:
+        st.write("#")
         user_login_container = st.container()
 
 
@@ -250,19 +304,18 @@ def get_logged_in_user_email():
                 st.session_state["google_id"] = id_info.get("sub")
                 st.session_state["user_name"] = id_info.get("name")
                 st.session_state["email"] = id_info.get("email")
-                print(f'google_id = {id_info.get("sub")} user_name = {id_info.get("name")} email_id = {id_info.get("email")} picture = {id_info.get("picture")}')
+                #print(f'google_id = {id_info.get("sub")} user_name = {id_info.get("name")} email_id = {id_info.get("email")} picture = {id_info.get("picture")}')
 
                 user_email = id_info.get("email")
                 #creating a user in firebase
                 if user_email:
                     try:
-                        #user = auth.get_user_by_email(user_email)
                         user = auth.get_user_by_email(user_email)
-                        print(f"auth.get_user_by_email= {user}")
+                        print(f"Existing user= {user_email}")
                     except exceptions.FirebaseError:
-                        print("In inner exception")
+                        #print("In inner exception")
                         user = auth.create_user(uid=id_info.get("sub"), display_name=id_info.get("name"), email=user_email )
-                        print(f"after creating auth.create_user= {user}")
+                        print(f"Added user to Firebase= {user_email}")
                     st.session_state.email = user.email
 
                 #st.write(f"Hello {st.session_state['user_name']}! <br/> <a href='/'><button>Logout</button></a>")
@@ -280,7 +333,7 @@ def show_login_button():
 
 def check_login():
     #st.title('Welcome!')
-    print(f"st.session_state.email={st.session_state.email}")
+    #print(f"st.session_state.email={st.session_state.email}")
     if not st.session_state.email:
         #print(f"not st.session_state.email = {not st.session_state.email} = not st.session_state.email {st.session_state.email}")
         #print("calling get_logged_in_user_email()")
@@ -293,11 +346,14 @@ def check_login():
         #st.write(st.session_state.email)
         with user_login_container:
             #print(f" User name in session= {st.session_state.user_name} ")
-            st.write(st.session_state.user_name)
-            if st.button("Logout", type="primary", key="logout_non_required"):
-                st.session_state.email = ''
-                print("Calling rerun")
-                st.rerun()
+            st.write(f'<center> {st.session_state.user_name} </center>', unsafe_allow_html=True)
+            logout_col1, logout_col2, logout_col3 = st.columns([1,1,1])
+            with logout_col2:
+                logout_button = st.button("Logout", type="primary", key="logout_non_required")
+                if logout_button:
+                    st.session_state.email = ''
+                    print("Calling rerun")
+                    st.rerun()
 
 check_login()
 
@@ -325,7 +381,7 @@ with st.container():
     resume_and_jd_uploaded = False
     #st.write(f"In the beginning before uploading file: {st.session_state}")
     #expander_string = ":heavy_multiplication_x: **Upload Resume**   ---------   :heavy_multiplication_x: **Provide Job Desctiption** "
-    expander_string = ":heavy_multiplication_x: **Upload Resume and Provide Job Desctiption** :small_red_triangle_down: (one time activity)"
+    expander_string = ":heavy_multiplication_x: **Upload Resume and Provide Job Description** :small_red_triangle_down: (one time activity)"
     is_expanded = True
     if "resume_text" not in st.session_state:
         st.session_state.resume_text = ""
@@ -354,7 +410,7 @@ with st.container():
     
     if len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) > 0 :
         resume_and_jd_uploaded = True
-        expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Desctiption  "
+        expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Description  "
         is_expanded = False
         #print("in new condition 1")
     elif len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) > 0 and st.session_state.last_uploaded_file_name != select_file_for_upload:
@@ -366,22 +422,22 @@ with st.container():
     elif len(st.session_state.resume_text) <=0 and len(st.session_state.job_description_text) > 0:
         #print("in new condition3")
         resume_and_jd_uploaded = False
-        expander_string = " :white_check_mark: Reusme    :heavy_multiplication_x: **Provide Job Desctiption** :small_red_triangle_down:  "
+        expander_string = " :white_check_mark: Reusme    :heavy_multiplication_x: **Provide Job Description** :small_red_triangle_down:  "
         is_expanded = True
 
     elif len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) <=0:    
         #print("in new condition4")
         resume_and_jd_uploaded = False
-        expander_string = " :heavy_multiplication_x: **Upload Reusme** :small_red_triangle_down:    :white_check_mark:Job Desctiption  "
+        expander_string = " :heavy_multiplication_x: **Upload Reusme** :small_red_triangle_down:    :white_check_mark:Job Description  "
         is_expanded = True
     elif len(st.session_state.resume_text) <=0 and len(st.session_state.job_description_text) <=0:
         #print("in new condition5")
         resume_and_jd_uploaded = False
-        expander_string = " :heavy_multiplication_x: **Upload Resume and Provide Job Desctiption** :small_red_triangle_down: (one time activity)"
+        expander_string = " :heavy_multiplication_x: **Upload Resume and Provide Job Description** :small_red_triangle_down: (one time activity)"
         is_expanded = True
 
     #resume_jd_message_container = st.container(border=True)
-    #print(f"is_expanded= {is_expanded}")
+    #print(f"is_expanded= {is_expanded}") 
 
     resume_job_expander_container = st.container()
     with resume_job_expander_container:
@@ -398,7 +454,7 @@ with st.container():
                 jd_main_content = st.text_area(
                     label = "Job Description :red[*] ",
                     height = 75,
-                    max_chars = 7000 ,
+                    max_chars = 9000 ,
                     placeholder = "Job Description", key="job_desc_key"
                     )
             resume_jd_upload_button_col, resume_jd_upload_message_col  =  st.columns([1, 9])
@@ -440,9 +496,10 @@ with st.container():
                         st.session_state.file_reuploaded_chat_update = True
                         st.session_state.file_reuploaded_audio_update = True
                         #print(f"st.session_state.resume_text = {st.session_state.resume_text} \n and \n st.session_state.job_description_text = {st.session_state.job_description_text} ")
-                        expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Desctiption  "
+                        expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Description  "
                         is_expanded = False
-                        resume_jd_message_container.success("File uploaded sucessfully")
+                        #resume_jd_message_container.success("File uploaded sucessfully")
+                        resume_jd_message_container.write("File uploaded sucessfully")
                 except Exception as e:
                     print("An error occurred:", e)
 
@@ -488,22 +545,30 @@ if selected == 'Skills & JD review':
             with resume_review_info_col3:
                 st.markdown(f"<p id='rcorners2'>🦾 Use the insights from skill alignment and gap analysis to customize your resume </p>", unsafe_allow_html=True)
 
+            
             resume_review_col1, resume_review_col2, resume_review_col3 = st.columns([1,1,1])
             with resume_review_col2:
-                m = st.markdown("""
-                <style>
-                div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
-                </style>""", unsafe_allow_html=True)
-                review_resume_button = st.button(label="Review skill alignments for Job Description.")
-            #st.button(label="My button", style="background-color: #DD3300; color:#eeffee; border-radius: 0.75rem;")
+                review_resume_button_container = st.empty()
+                with review_resume_button_container:
+                    m = st.markdown("""
+                    <style>
+                    div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                    </style>""", unsafe_allow_html=True)
+                    review_resume_button = st.button(label="Review skill alignments with Job Description.")
+                    #st.button(label="My button", style="background-color: #DD3300; color:#eeffee; border-radius: 0.75rem;")
+            
             rjr_message_container = st.container()
             with rjr_message_container:
                 rjr_loading_indicator_container = st.container()
                 #rjr_error_message = st.success("")
                 #rjr_message_response = st.success()
                 rjr_message_response = st.empty()
-                if len(st.session_state.skillJDReview_value) > 0:
+                if len(st.session_state.skillJDReview_value) > 0 :
                     rjr_message_response.success(st.session_state.skillJDReview_value)
+                    if not st.session_state.email:
+                        review_resume_button_container.empty()
+                        review_resume_button_container.success("Please login to review again")
+
 
             if review_resume_button:
                 with rjr_loading_indicator_container:
@@ -517,6 +582,12 @@ if selected == 'Skills & JD review':
                         st.session_state.skillJDReview_value = rjr_response
                         rjr_message_response.empty()
                         rjr_message_response.success(rjr_response)
+
+                        if not st.session_state.email:
+                            #print(f"Email not found and value shows: {st.session_state.email}")
+                            review_resume_button_container.empty()
+                            review_resume_button_container.success("Please login to review again")
+
                     except Exception as e:
                         print("An error occurred:", e)
 
@@ -556,11 +627,13 @@ if selected == 'Interview Q & A':
 
             interview_que_ans_col1, interview_que_ans_col2, interview_que_ans_col3 = st.columns([1,1,1])
             with interview_que_ans_col2:
-                m = st.markdown("""
-                <style>
-                div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
-                </style>""", unsafe_allow_html=True)
-                interview_que_ans_button = st.button(label="Generate interview questions and ideal asnswers.")
+                qa_button_container = st.empty()
+                with qa_button_container:
+                    m = st.markdown("""
+                    <style>
+                    div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                    </style>""", unsafe_allow_html=True)
+                    interview_que_ans_button = st.button(label="Generate interview questions and ideal asnswers.")
         
             qa_message_container = st.container()
             with qa_message_container:
@@ -568,6 +641,10 @@ if selected == 'Interview Q & A':
                 qa_message_response = st.empty()
                 if len(st.session_state.questionAnswer_value) > 0:
                     qa_message_response.success(st.session_state.questionAnswer_value)
+                    if not st.session_state.email:
+                        qa_button_container.empty()
+                        qa_button_container.success("Please login to regenerate Q & A")
+
 
             if interview_que_ans_button:
                 with qa_loading_indicator_container:
@@ -579,6 +656,12 @@ if selected == 'Interview Q & A':
                         st.session_state.questionAnswer_value = qa_response   
                         qa_message_response.empty()                 
                         qa_message_response.success(qa_response)
+                        
+                        if not st.session_state.email:
+                            #print(f"Email not found and value shows: {st.session_state.email}")
+                            qa_button_container.empty()
+                            qa_button_container.success("Please login to regenerate Q & A")
+
                     except Exception as e:
                         print("An error occurred:", e)
 
@@ -598,9 +681,9 @@ if selected == 'Cover Letter' :
                             <small>This tool utilizes both the job description and resume to generate a tailored cover letter for your job application. To ensure greater precision, kindly include the job title and company name. Incorporating these details enhances the effectiveness of the generated letter. </small>
                                """, unsafe_allow_html=True)  
             with cover_letter_col2:
-                job_title = st.text_input(" Job Title :red[*] ", max_chars =50, placeholder="Technical Project Manager")
+                job_title = st.text_input(" Job Title :red[*] ", max_chars =50, placeholder="Technical Project Manager", key="job_title")
             with cover_letter_col3:
-                company = st.text_input(" Applying for (Company) :red[*]", max_chars=70, placeholder="Google")
+                company = st.text_input(" Applying for (Company) :red[*]", max_chars=70, placeholder="Google", key="company_input")
 
             st.markdown( """ <style>
                         #rcorners2 {
@@ -621,11 +704,13 @@ if selected == 'Cover Letter' :
 
             cover_letter_btn_col1, cover_letter_btn_col2, cover_letter_btn_col3 = st.columns([1,1,1])
             with cover_letter_btn_col2:
-                m = st.markdown("""
-                    <style>
-                    div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
-                    </style>""", unsafe_allow_html=True)
-                cover_letter_button = st.button(label="Generate Cover Letter")
+                cover_letter_button_container = st.empty()
+                with cover_letter_button_container:
+                    m = st.markdown("""
+                        <style>
+                        div.stButton > button:first-child {background-color: #0099ff;color:#ffffff;}
+                        </style>""", unsafe_allow_html=True)
+                    cover_letter_button = st.button(label="Generate Cover Letter")
             
             cover_letter_message_container = st.container()
             with cover_letter_message_container:
@@ -633,6 +718,10 @@ if selected == 'Cover Letter' :
                 cover_letter_message_response = st.empty()
                 if len(st.session_state.coverLetter_value) > 0:
                     cover_letter_message_response.success(st.session_state.coverLetter_value)
+                    if not st.session_state.email:
+                        cover_letter_button_container.empty()
+                        cover_letter_button_container.success("Please login to regenerate Cover leter")
+
 
             if cover_letter_button:
                 #print(f"job_title: {job_title is None}  len(job_title)= {len(job_title)} company: {company is not None}  len(company) {len(company)}")
@@ -645,7 +734,14 @@ if selected == 'Cover Letter' :
                                 cover_letter_text = generateCoverLetter(st.session_state.resume_text, job_title, st.session_state.job_description_text, company)
                             st.session_state.coverLetter_value = cover_letter_text
                             cover_letter_message_response.empty()
-                            cover_letter_message_response.success(cover_letter_text)                
+                            #print(f"Cover Letter text: {cover_letter_text}")
+                            cover_letter_message_response.success(cover_letter_text)
+                            
+                            if not st.session_state.email:
+                                #print(f"Email not found and value shows: {st.session_state.email}")
+                                cover_letter_button_container.empty()
+                                cover_letter_button_container.success("Please login to regenerate Cover leter")
+
                     elif len(job_title) >1 and len(company) <=0:
                         cover_letter_message_response.error("Company name is missing.")
                     elif len(job_title) <=0 and len(company) >1:
@@ -773,7 +869,7 @@ if selected == 'Chat Coversation':
 ## ----  Audio coversation implementation starts----------------------------
 if selected == 'Audio Conversation':
     #print("Current tab = Audio Conversation")
-    print(f"Last tab ={st.session_state.last_tab_clicked}")
+    #print(f"Last tab ={st.session_state.last_tab_clicked}")
     if(st.session_state.last_tab_clicked != "Audio Conversation"):
         st.session_state.audio_coversation_tab_cliecked = True
     
@@ -935,6 +1031,7 @@ footer_container = st.container(border=True)
 EMAIL = "bibhishan_k@yahoo.com"
 MOBILE = "+1 (408)931-0588"
 LOCATION = "Newark CA, USA"
+WEBSITE = "www.bkaradkar.net"
 with footer_container:
     coll, col2, col3 = st.columns((2,1,1))
     with coll:
@@ -946,29 +1043,49 @@ with footer_container:
     
     #Got these icons and classes from https://fontawesome.com/search?q=tw&o=r&m=free
     with col2:
-        st.subheader ("Policies")
-        st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Privacy Policy </a>" , unsafe_allow_html=True)
-        st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Terms and Conditions </a>" , unsafe_allow_html=True)
-        st.subheader ("Support")
-        st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Disclaimer </a>" , unsafe_allow_html=True)
-        st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Helps and FAQs </a>" , unsafe_allow_html=True)
-    
-    with col3:
         st.subheader ("Contact Info")        
         css_example = f'''
         <i class="fa-solid fa-envelope"></i> {EMAIL}
         
-        <i class="fa-solid fa-mobile"></i> {MOBILE}
-        
         <i class="fa-solid fa-location-dot"></i> {LOCATION}
+
+        <i class="fa-solid fa-user-tie"></i> {WEBSITE}
         '''
+
+        #Mobile number removed from contact information
+        #<i class="fa-solid fa-mobile"></i> {MOBILE}
+
         st.write(css_example,unsafe_allow_html=True)
 
+        #--- Bacuase of popup and modal issues in Streamlit, removing below links we will add them in future
+        # st.subheader ("Policies")
+        # st.markdown('<span id="button-after"></span>', unsafe_allow_html=True)
+        
+        #<button onclick="location.href='http://www.example.com'" type="button">www.example.com</button>
+    
+        # privacy_policy = st.button(label='Privacy Policy', key="policy_btn")
+        # if privacy_policy:
+        #     open_privacy_popup(hc.pricacy_policy_html_str)
+        # #st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Privacy Policy </a>" , unsafe_allow_html=True)
+        # st.markdown('<span id="button-after"></span>', unsafe_allow_html=True)
+        # term_condition = st.button(label='Terms and Conditions', key="terms_btn")
+        # if term_condition:
+        #     open_term_popup(hc.term_condition_html_str)
+        # #st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Terms and Conditions </a>" , unsafe_allow_html=True)
+        # st.subheader ("Support")
+        # st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Disclaimer </a>" , unsafe_allow_html=True)
+        # st.markdown("<a style='text-align: left; color: #5C6BC0 ; text-decoration: none;' href='https://ww.google.com' target='_blank'> Helps and FAQs </a>" , unsafe_allow_html=True)
+    
+    with col3:
         st.subheader("Social Media")
         #st.markdown(""" ‹a style="color: #SC6BC0; text-decoration: none;" href="https://twitter.com"> <i class-"fa-brands fa-instagram"></i> </a›""", unsafe_allow_html = True)
-        social_media = f""" <a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-instagram"></i> </a>
-        <a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-linkedin"></i> </a>
-        <a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-youtube"></i> </a>
-        <a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-twitter"></i> </a>
+        #<a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-instagram"></i> </a>
+        #<a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-twitter"></i> </a>        
+        social_media = f""" 
+                                                                                                                        
+        <a style="color: #sc6bc0; text-decoration: none;" href="https://www.linkedin.com/in/bibhishan-karadkar-910ba77/"> <i class="fa-brands fa-linkedin fa-2xl" style="color: #3a88fe;"></i> </a>
+        <a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-youtube fa-2xl" style="color: #e32400;"></i> </a>
         """
         st.write(social_media, unsafe_allow_html=True)
+
+        #st.write(f'<i class="fa-solid fa-user-tie"></i> {WEBSITE}', unsafe_allow_html=True)

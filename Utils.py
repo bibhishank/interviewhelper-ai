@@ -69,13 +69,13 @@ jd_text = ""
 
 #---------------------------------------------------------------------------------------------
 def setResumeText(file_text):
-    print("setting value in resume_text global variable")
+    #print("setting value in resume_text global variable")
     global resume_text 
     resume_text = file_text
 
 #---------------------------------------------------------------------------------------------
 def getResumeText():
-   print("Returning value in resume_text global variable")
+   #print("Returning value in resume_text global variable")
    return resume_text
 
 #---------------------------------------------------------------------------------------------
@@ -85,7 +85,7 @@ def setJobDescriptionText(jd_text_input):
 
 #---------------------------------------------------------------------------------------------
 def getJobDescription():
-   print("Returning value in job description global variable")
+   #print("Returning value in job description global variable")
    return jd_text
 
 #---------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ def readDocFile(doc_path):
 #Function to identify uploaded resume file type and call parser method
 def readPdforDocFile(file):
   if file.name.endswith(".pdf"):
-    print("PDF")
+    #print("PDF")
     return readPdfFile(file)
   elif file.name.endswith(".docx") or file.name.endswith(".doc"):
      return readDocFile(file)
