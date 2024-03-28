@@ -410,25 +410,25 @@ with st.container():
     
     if len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) > 0 :
         resume_and_jd_uploaded = True
-        expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Description  "
+        expander_string = " :white_check_mark: Resume    :white_check_mark: Job Description  "
         is_expanded = False
         #print("in new condition 1")
     elif len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) > 0 and st.session_state.last_uploaded_file_name != select_file_for_upload:
         #print("in new condition2")
         resume_and_jd_uploaded = False
-        expander_string = " :white_check_mark: Reusme    :heavy_multiplication_x: **Upload changes** :small_red_triangle_down:  "
+        expander_string = " :white_check_mark: Resume    :heavy_multiplication_x: **Upload changes** :small_red_triangle_down:  "
         is_expanded = True
 
     elif len(st.session_state.resume_text) <=0 and len(st.session_state.job_description_text) > 0:
         #print("in new condition3")
         resume_and_jd_uploaded = False
-        expander_string = " :white_check_mark: Reusme    :heavy_multiplication_x: **Provide Job Description** :small_red_triangle_down:  "
+        expander_string = " :white_check_mark: Resume    :heavy_multiplication_x: **Provide Job Description** :small_red_triangle_down:  "
         is_expanded = True
 
     elif len(st.session_state.resume_text) >0 and len(st.session_state.job_description_text) <=0:    
         #print("in new condition4")
         resume_and_jd_uploaded = False
-        expander_string = " :heavy_multiplication_x: **Upload Reusme** :small_red_triangle_down:    :white_check_mark:Job Description  "
+        expander_string = " :heavy_multiplication_x: **Upload Resume** :small_red_triangle_down:    :white_check_mark:Job Description  "
         is_expanded = True
     elif len(st.session_state.resume_text) <=0 and len(st.session_state.job_description_text) <=0:
         #print("in new condition5")
@@ -496,7 +496,7 @@ with st.container():
                         st.session_state.file_reuploaded_chat_update = True
                         st.session_state.file_reuploaded_audio_update = True
                         #print(f"st.session_state.resume_text = {st.session_state.resume_text} \n and \n st.session_state.job_description_text = {st.session_state.job_description_text} ")
-                        expander_string = " :white_check_mark: Reusme    :white_check_mark: Job Description  "
+                        expander_string = " :white_check_mark: Resume    :white_check_mark: Job Description  "
                         is_expanded = False
                         #resume_jd_message_container.success("File uploaded sucessfully")
                         resume_jd_message_container.write("File uploaded sucessfully")
@@ -573,7 +573,6 @@ if selected == 'Skills & JD review':
             if review_resume_button:
                 with rjr_loading_indicator_container:
                     rjr_loading_indicator = st.spinner("Reviewing skills alignment for the Job Description, please wait...")
-                    #rjr_error_message = st.spinner("Reviewing Job Description and Resume, please wait...")
                     try:
                         with rjr_loading_indicator:
                             rjr_response = getSkillAndRequirementReview(st.session_state.resume_text, st.session_state.job_description_text)
@@ -767,7 +766,7 @@ if selected == 'Chat Coversation':
     if len(st.session_state.resume_text) > 0 and len(st.session_state.job_description_text) > 0:
         chat_conversation_container = st.container(border=True)
         with chat_conversation_container:
-            st.markdown(f" <small>This Interview like conversation offers a realistic simulation of the interview process, helping users build confidence and refine their responses in a supportive environment. This is is an immersive experience where users engage in simulated interviews facilitated by artificial intelligence.</small>"
+            st.markdown(f" <small>This Interview like conversation offers a realistic simulation of the interview process, helping users build confidence and refine their responses in a supportive environment. This is an immersive experience where users engage in simulated interviews facilitated by artificial intelligence.</small>"
                         , unsafe_allow_html=True)  
             st.markdown( """ <style>
                         #rcorners2 {
@@ -780,7 +779,7 @@ if selected == 'Chat Coversation':
 
             resume_review_info_col1, resume_review_info_col2, resume_review_info_col3 = st.columns([1,1,1])
             with resume_review_info_col1:
-                st.markdown(f"<p id='rcorners2'>🦾 Engage in lifelike interview scenarios to practice and refine responses.. </p>", unsafe_allow_html=True)
+                st.markdown(f"<p id='rcorners2'>🦾 Engage in lifelike interview scenarios to practice and refine responses. </p>", unsafe_allow_html=True)
             with resume_review_info_col2:
                 st.markdown(f"<p id='rcorners2'>🦾 Gain confidence by participating in simulated interviews tailored to your needs. </p>", unsafe_allow_html=True)
             with resume_review_info_col3:
@@ -827,7 +826,7 @@ if selected == 'Chat Coversation':
                 if st.session_state.chat_very_first_request == True or st.session_state.file_reuploaded_chat_update == True:
                     if st.session_state.file_reuploaded_chat_update == True:
                         print("File update detected")
-                    with st.spinner('💡 Generating question, please wait'):
+                    with st.spinner('💡 Generating question, please wait...'):
                         chat_response = st.session_state.chat.send_message(ut.getChat_first_prompt(st.session_state.resume_text, st.session_state.job_description_text)) 
                         st.session_state.file_reuploaded_chat_update = False
                     #print(f"Sending first request: {first_prompt_template}")
@@ -1084,7 +1083,7 @@ with footer_container:
         social_media = f""" 
                                                                                                                         
         <a style="color: #sc6bc0; text-decoration: none;" href="https://www.linkedin.com/in/bibhishan-karadkar-910ba77/"> <i class="fa-brands fa-linkedin fa-2xl" style="color: #3a88fe;"></i> </a>
-        <a style="color: #sc6bc0; text-decoration: none;" href="https://bkaradkar.net"> <i class="fa-brands fa-youtube fa-2xl" style="color: #e32400;"></i> </a>
+        <a style="color: #sc6bc0; text-decoration: none;" href="https://www.youtube.com/watch?v=dSdOddlGPOA"> <i class="fa-brands fa-youtube fa-2xl" style="color: #e32400;"></i> </a>
         """
         st.write(social_media, unsafe_allow_html=True)
 
