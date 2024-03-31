@@ -484,12 +484,14 @@ with st.container():
                         resume_jd_message_container.error("File is too large, please reduce text size and re-upload file.")
                     elif resume_text == "ERROR_READING_FILE":
                         resume_jd_message_container.error("System is not able to read provided file, please provided valid .pdf file .")
+                    elif resume_text == "ERROR_READING_DOC_FILE":
+                        resume_jd_message_container.error("System is not able to read provided file, please provided valid .doc/.docx file .")
                     elif resume_text == "UNSUPPORTED_FILE_TYPE":
-                        resume_jd_message_container.error("Unsupported file type, accepted file types are .pdf, .doc or .docx ")    
+                        resume_jd_message_container.error("Unsupported file type, accepted file types are .pdf, .doc or .docx or .doc")    
                     elif resume_text == "SUCCESS":
                         st.session_state.last_uploaded_file_name = resume_main_file.name
                         ut.setJobDescriptionText(jd_main_content)
-                        ut.verifyResumeandJDSize()
+                        #ut.verifyResumeandJDSize()
                         st.session_state.resume_text = ut.getResumeText()
                         st.session_state.job_description_text = jd_main_content
                         st.session_state.file_reuploaded = True

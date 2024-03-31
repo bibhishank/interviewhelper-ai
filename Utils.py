@@ -140,20 +140,36 @@ def readDocFile(doc_path):
     :param doc_path: path to .doc or .docx file to be extracted
     :return: string of extracted text
     '''
-    temp = docx2txt.process(doc_path)
-    return temp
-    st.write(temp)
-    st.write("---------------------------------------------------------------------------------------------")
-    text = [line.replace('\t', ' ') for line in temp.split('\n') if line]
+    try:
+      temp = docx2txt.process(doc_path)
+      
+      resume_text_length_char = len(temp)
+      if resume_text_length_char < 200:
+        return "LESS_TEXT_IN_PDF"
+      if resume_text_length_char > 15000:
+        return "MORE_TEXT_IN_PDF"
+      
+      setResumeText(temp)
+      return "SUCCESS"
+      #print(f"File content: {temp}")
+      #return temp
+    except Exception as e:
+      raise Exception ("error reading the docx/doc file")
+      return "ERROR_READING_DOC_FILE"
+    
+    #st.write("---------------------------------------------------------------------------------------------")
+    #text = [line.replace('\t', ' ') for line in temp.split('\n') if line]
     #return ' '.join(text)
 
 #---------------------------------------------------------------------------------------------
 #Function to identify uploaded resume file type and call parser method
 def readPdforDocFile(file):
+  #print(f"File type: {file.name} ")
   if file.name.endswith(".pdf"):
-    #print("PDF")
+    #print("File type PDF")
     return readPdfFile(file)
   elif file.name.endswith(".docx") or file.name.endswith(".doc"):
+     #print("File type .docx")
      return readDocFile(file)
   else:
      return "UNSUPPORTED_FILE_TYPE"
