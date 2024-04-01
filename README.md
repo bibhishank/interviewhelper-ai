@@ -8,5 +8,5 @@ This code is developed for a website to empower users worldwide with personalize
 Internally it uses Gemini Pro LLM for the funtions available on the site
 
 
-[![Interview Helper AI](https://github.com/bibhishank/interviewhelper-ai/assets/45320951/ee271bcf-86af-4a46-8d8e-03136686ac0c)]
-(https://www.youtube.com/watch?v=dSdOddlGPOA "Interview Helper AI")
+
+[![Interview Helper AI](https://github.com/bibhishank/interviewhelper-ai/assets/45320951/ee271bcf-86af-4a46-8d8e-03136686ac0c)](https://www.youtube.com/watch?v=dSdOddlGPOA)
